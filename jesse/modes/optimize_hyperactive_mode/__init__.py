@@ -1,13 +1,11 @@
 import os
 from math import log10
 from multiprocessing import cpu_count
-from typing import Dict, Any, Tuple, Union
 
-import arrow
 import click
+import hyperactive
 import numpy as np
 import pandas as pd
-import hyperactive
 
 import jesse.helpers as jh
 import jesse.services.required_candles as required_candles

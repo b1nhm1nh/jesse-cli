@@ -165,12 +165,13 @@ class Optimizer():
         self.search_space = self.get_search_space()
 
         if jh.file_exists(self.path):
-          if click.confirm('Optimization for {} exists? Continue?'.format(self.study_name), abort=True, default=True):
-            mem = pd.read_csv(self.path)
-            hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer, n_iter=self.solution_len * 100 - len(mem), memory_warm_start=mem,
-                           n_jobs=self.cpu_cores)
-            hyper.run()
-            return
+          mem = pd.read_csv(self.path)
+          if len(mem) > 0:
+            if click.confirm('Optimization for {} exists? Continue?'.format(self.study_name), default=True):
+              hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer, n_iter=self.solution_len * 100 - len(mem), memory_warm_start=mem,
+                             n_jobs=self.cpu_cores)
+              hyper.run()
+              return
 
         # init empty pandas dataframe
         search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score"])

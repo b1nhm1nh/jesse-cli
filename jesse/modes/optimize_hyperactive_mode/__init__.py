@@ -7,7 +7,7 @@ import arrow
 import click
 import numpy as np
 import pandas as pd
-from hyperactive import Hyperactive, RandomSearchOptimizer
+import hyperactive
 
 import jesse.helpers as jh
 import jesse.services.required_candles as required_candles
@@ -160,8 +160,77 @@ class Optimizer():
 
     def run(self):
 
-        hyper = Hyperactive(distribution="multiprocessing")
-        optimizer = RandomSearchOptimizer()
+        hyper = hyperactive.Hyperactive(distribution="multiprocessing")
+
+        # optimizer = hyperactive.RandomSearchOptimizer()
+        #
+        # optimizer = hyperactive.RandomRestartHillClimbingOptimizer(
+        #   epsilon=0.1,
+        #   distribution="laplace",
+        #   n_neighbours=4,
+        #   rand_rest_p=0.1,
+        #   n_iter_restart=20,
+        # )
+        #
+        # optimizer = hyperactive.RandomAnnealingOptimizer(
+        #   epsilon=0.1,
+        #   distribution="laplace",
+        #   n_neighbours=4,
+        #   rand_rest_p=0.1,
+        #   annealing_rate=0.999,
+        #   start_temp=0.8,
+        # )
+        #
+        # optimizer = hyperactive.HillClimbingOptimizer(
+        #   epsilon=0.1, distribution="laplace", n_neighbours=4, rand_rest_p=0.1
+        # )
+        #
+        # optimizer = hyperactive.RepulsingHillClimbingOptimizer(
+        #   epsilon=0.1,
+        #   distribution="laplace",
+        #   n_neighbours=4,
+        #   repulsion_factor=5,
+        #   rand_rest_p=0.1,
+        # )
+        #
+        # optimizer = hyperactive.SimulatedAnnealingOptimizer(
+        #   epsilon=0.1,
+        #   distribution="laplace",
+        #   n_neighbours=4,
+        #   rand_rest_p=0.1,
+        #   p_accept=0.15,
+        #   norm_factor="adaptive",
+        #   annealing_rate=0.999,
+        #   start_temp=0.8,
+        # )
+        #
+        # optimizer = hyperactive.ParallelTemperingOptimizer(n_iter_swap=5, rand_rest_p=0.05)
+
+        optimizer = hyperactive.ParticleSwarmOptimizer(
+          inertia=0.4,
+          cognitive_weight=0.7,
+          social_weight=0.7,
+          temp_weight=0.3,
+          rand_rest_p=0.05,
+        )
+
+        # optimizer = hyperactive.EvolutionStrategyOptimizer(
+        #   mutation_rate=0.5, crossover_rate=0.5, rand_rest_p=0.05
+        # )
+        #
+        # optimizer = hyperactive.BayesianOptimizer(
+        #   xi=0.03, warm_start_smbo=warm_start_smbo, rand_rest_p=0.1
+        # )
+        # optimizer = hyperactive.TreeStructuredParzenEstimators(
+        #   gamma_tpe=0.5, warm_start_smbo=warm_start_smbo, rand_rest_p=0.05
+        # )
+        # optimizer = hyperactive.DecisionTreeOptimizer(
+        #   tree_regressor="random_forest",
+        #   xi=0.02,
+        #   warm_start_smbo=warm_start_smbo,
+        #   rand_rest_p=0.05,
+        # )
+
         self.search_space = self.get_search_space()
 
         if jh.file_exists(self.path):

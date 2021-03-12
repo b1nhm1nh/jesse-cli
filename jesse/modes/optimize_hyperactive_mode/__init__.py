@@ -182,11 +182,6 @@ class Optimizer():
 
 
 
-
-        hyper.run()
-
-
-
 def optimize_mode(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int) -> None:
     # clear the screen
     click.clear()

@@ -364,10 +364,7 @@ def optimize(start_date: str, finish_date: str, optimal_total: int, cpu: int, de
     '--debug/--no-debug', default=False,
     help='Displays detailed logs about the genetics algorithm. Use it if you are interested int he genetics algorithm.'
 )
-@click.option('--csv/--no-csv', default=False, help='Outputs a CSV file of all DNAs on completion.')
-@click.option('--json/--no-json', default=False, help='Outputs a JSON file of all DNAs on completion.')
-def optimize_hyperactive(start_date: str, finish_date: str, optimal_total: int, cpu: int, debug: bool, csv: bool,
-             json: bool) -> None:
+def optimize_hyperactive(start_date: str, finish_date: str, optimal_total: int, cpu: int, debug: bool) -> None:
     """
     tunes the hyper-parameters of your strategy
     """
@@ -382,7 +379,7 @@ def optimize_hyperactive(start_date: str, finish_date: str, optimal_total: int, 
 
     from jesse.modes.optimize_hyperactive_mode import optimize_mode
 
-    optimize_mode(start_date, finish_date, optimal_total, cpu, csv, json)
+    optimize_mode(start_date, finish_date, optimal_total, cpu)
 
 @cli.command()
 @click.argument('name', required=True, type=str)

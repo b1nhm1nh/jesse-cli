@@ -374,9 +374,9 @@ def optimize_hyperactive(start_date: str, finish_date: str, optimal_total: int, 
     # debug flag
     config['app']['debug_mode'] = debug
 
-    from jesse.modes.optimize_hyperactive_mode import optimize_mode
+    from jesse.modes.optimize_hyperactive_mode import optimize_mode_hyperactive
 
-    optimize_mode(start_date, finish_date, optimal_total, cpu, optimizer, iterations)
+    optimize_mode_hyperactive(start_date, finish_date, optimal_total, cpu, optimizer, iterations)
 
 @cli.command()
 @click.argument('name', required=True, type=str)

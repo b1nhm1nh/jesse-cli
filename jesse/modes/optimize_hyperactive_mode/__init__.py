@@ -61,9 +61,9 @@ class Optimizer():
         required_candles.load_required_candles(c[0], c[1], training_candles_start_date,
                                                training_candles_finish_date))
 
-    self.study_name = '{}-{}-{}-{}'.format(
+    self.study_name = '{}-{}-{}-{}-{}'.format(
       self.strategy_name, self.exchange,
-      self.symbol, self.timeframe
+      self.symbol, self.timeframe, self.optimizer
     )
 
     self.path = 'storage/optimize/csv/{}.csv'.format(self.study_name)
@@ -157,8 +157,7 @@ class Optimizer():
 
   def run(self):
 
-    # ["progress_bar", "print_results", "print_times"],
-    hyper = hyperactive.Hyperactive(distribution="multiprocessing", verbosity=["progress_bar"])
+    hyper = hyperactive.Hyperactive(distribution="multiprocessing", verbosity=["progress_bar", "print_results", "print_times"])
 
     self.search_space = self.get_search_space()
 
@@ -166,8 +165,8 @@ class Optimizer():
 
     if jh.file_exists(self.path):
       mem = pd.read_csv(self.path)
-      if len(mem) > 0:
-        if click.confirm('Optimization for {} exists? Continue?'.format(self.study_name), default=True):
+      if not mem.empty:
+        if click.confirm('Previous optimization results for {} exists? Continue?'.format(self.study_name), default=True):
           self.iterations = self.iterations - len(mem)
 
     if self.optimizer == "RandomSearchOptimizer":
@@ -242,24 +241,24 @@ class Optimizer():
         rand_rest_p=0.05,
       )
 
-    if mem:
-      hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer, memory_warm_start=mem,
-                       n_iter=self.iterations,
-                       n_jobs=self.cpu_cores)
-    else:
+    if mem is None or mem.empty:
       # init empty pandas dataframe
       search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score"])
       search_data.to_csv(self.path, index=False)
       hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer,
                        n_iter=self.iterations,
                        n_jobs=self.cpu_cores)
+    else:
+      hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer, memory_warm_start=mem,
+                       n_iter=self.iterations,
+                       n_jobs=self.cpu_cores)
     hyper.run()
 
 
-def optimize_mode(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int) -> None:
+def optimize_mode_hyperactive(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int, optimizer: str,
+                  iterations: int) -> None:
   # clear the screen
   click.clear()
-  print('loading candles...')
 
   # validate routes
   validate_routes(router)
@@ -268,10 +267,7 @@ def optimize_mode(start_date: str, finish_date: str, optimal_total: int, cpu_cor
   # and testing candles (15% for test, 85% for training)
   training_candles = get_training_candles(start_date, finish_date)
 
-  # clear the screen
-  click.clear()
-
-  optimizer = Optimizer(training_candles, optimal_total, cpu_cores)
+  optimizer = Optimizer(training_candles, optimal_total, cpu_cores, optimizer, iterations)
 
   optimizer.run()
 

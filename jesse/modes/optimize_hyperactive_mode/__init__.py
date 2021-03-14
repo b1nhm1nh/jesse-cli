@@ -111,11 +111,11 @@ class Optimizer():
             ratio_config))
 
       if ratio < 0:
-        score = 0.00001
+        score = 0.0001
       else:
         score = total_effect_rate * ratio_normalized
     else:
-      score = 0.00001
+      score = 0.0001
 
     # reset store
     store.reset()

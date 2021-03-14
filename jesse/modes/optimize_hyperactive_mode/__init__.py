@@ -1,3 +1,4 @@
+import itertools
 import os
 from math import log10
 from multiprocessing import cpu_count
@@ -161,7 +162,11 @@ class Optimizer():
                                     verbosity=["progress_bar", "print_results", "print_times"])
 
     self.search_space = self.get_search_space()
-    combinations = sum(len(v) for v in self.search_space.values())
+
+    # Later use actual search space combinations to determin n_iter
+    #keys, values = zip(*self.search_space.items())
+    #combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    #combinations_count = len(combinations)
 
     mem = None
 

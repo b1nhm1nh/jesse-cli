@@ -143,7 +143,7 @@ class Optimizer():
       if st_hp['type'] is int:
         if not 'step' in st_hp:
           st_hp['step'] = 1
-        hp[st_hp['name']] = list(range(st_hp['min'], st_hp['max'], st_hp['step']))
+        hp[st_hp['name']] = list(np.arange(st_hp['min'], st_hp['max'], st_hp['step']))
       elif st_hp['type'] is float:
         if not 'step' in st_hp:
           st_hp['step'] = 0.1
@@ -225,21 +225,24 @@ class Optimizer():
       optimizer = hyperactive.EvolutionStrategyOptimizer(
         mutation_rate=0.5, crossover_rate=0.5, rand_rest_p=0.05
       )
-    elif self.optimizer == "BayesianOptimizer":
-      optimizer = hyperactive.BayesianOptimizer(
-        xi=0.03, warm_start_smbo=mem, rand_rest_p=0.1
-      )
-    elif self.optimizer == "TreeStructuredParzenEstimators":
-      optimizer = hyperactive.TreeStructuredParzenEstimators(
-        gamma_tpe=0.5, warm_start_smbo=mem, rand_rest_p=0.05
-      )
-    elif self.optimizer == "DecisionTreeOptimizer":
-      optimizer = hyperactive.DecisionTreeOptimizer(
-        tree_regressor="random_forest",
-        xi=0.02,
-        warm_start_smbo=mem,
-        rand_rest_p=0.05,
-      )
+
+    # Not suited for this usecase: Uncaught Exception: MemoryError: Unable to allocate XX TiB for an array with shape...
+
+    # elif self.optimizer == "BayesianOptimizer":
+    #   optimizer = hyperactive.BayesianOptimizer(
+    #     xi=0.03, warm_start_smbo=mem, rand_rest_p=0.1
+    #   )
+    # elif self.optimizer == "TreeStructuredParzenEstimators":
+    #   optimizer = hyperactive.TreeStructuredParzenEstimators(
+    #     gamma_tpe=0.5, warm_start_smbo=mem, rand_rest_p=0.05
+    #   )
+    # elif self.optimizer == "DecisionTreeOptimizer":
+    #   optimizer = hyperactive.DecisionTreeOptimizer(
+    #     tree_regressor="random_forest",
+    #     xi=0.02,
+    #     warm_start_smbo=mem,
+    #     rand_rest_p=0.05,
+    #   )
 
     if mem is None or mem.empty:
       # init empty pandas dataframe

@@ -157,16 +157,19 @@ class Optimizer():
 
   def run(self):
 
-    hyper = hyperactive.Hyperactive(distribution="multiprocessing", verbosity=["progress_bar", "print_results", "print_times"])
+    hyper = hyperactive.Hyperactive(distribution="multiprocessing",
+                                    verbosity=["progress_bar", "print_results", "print_times"])
 
     self.search_space = self.get_search_space()
+    combinations = sum(len(v) for v in self.search_space.values())
 
     mem = None
 
     if jh.file_exists(self.path):
       mem = pd.read_csv(self.path)
       if not mem.empty:
-        if click.confirm('Previous optimization results for {} exists? Continue?'.format(self.study_name), default=True):
+        if click.confirm('Previous optimization results for {} exists? Continue?'.format(self.study_name),
+                         default=True):
           self.iterations = self.iterations - len(mem)
 
     if self.optimizer == "RandomSearchOptimizer":
@@ -225,6 +228,10 @@ class Optimizer():
       optimizer = hyperactive.EvolutionStrategyOptimizer(
         mutation_rate=0.5, crossover_rate=0.5, rand_rest_p=0.05
       )
+    else:
+      raise ValueError('Entered optimizer which is {} is not known.'.format(
+        self.optimizer
+      ))
 
     # Not suited for this usecase: Uncaught Exception: MemoryError: Unable to allocate XX TiB for an array with shape...
 
@@ -259,7 +266,7 @@ class Optimizer():
 
 
 def optimize_mode_hyperactive(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int, optimizer: str,
-                  iterations: int) -> None:
+                              iterations: int) -> None:
   # clear the screen
   click.clear()
 

@@ -83,54 +83,57 @@ class Optimizer():
         c[1]
       )
 
-    # run backtest simulation
-    simulator(self.training_candles, hp)
+    try:
+      # run backtest simulation
+      simulator(self.training_candles, hp)
 
-    if store.completed_trades.count > 5:
-      training_data = stats.trades(store.completed_trades.trades, store.app.daily_balance)
-      total_effect_rate = log10(training_data['total']) / log10(self.optimal_total)
-      if total_effect_rate > 1:
-        total_effect_rate = 1
+      if store.completed_trades.count > 5:
+        training_data = stats.trades(store.completed_trades.trades, store.app.daily_balance)
+        total_effect_rate = log10(training_data['total']) / log10(self.optimal_total)
+        if total_effect_rate > 1:
+          total_effect_rate = 1
 
-      ratio_config = jh.get_config('env.optimization.ratio', 'sharpe')
-      if ratio_config == 'sharpe':
-        ratio = training_data['sharpe_ratio']
-        ratio_normalized = jh.normalize(ratio, -.5, 5)
-      elif ratio_config == 'calmar':
-        ratio = training_data['calmar_ratio']
-        ratio_normalized = jh.normalize(ratio, -.5, 30)
-      elif ratio_config == 'sortiono':
-        ratio = training_data['sortino_ratio']
-        ratio_normalized = jh.normalize(ratio, -.5, 15)
-      elif ratio_config == 'omega':
-        ratio = training_data['omega_ratio']
-        ratio_normalized = jh.normalize(ratio, -.5, 5)
+        ratio_config = jh.get_config('env.optimization.ratio', 'sharpe')
+        if ratio_config == 'sharpe':
+          ratio = training_data['sharpe_ratio']
+          ratio_normalized = jh.normalize(ratio, -.5, 5)
+        elif ratio_config == 'calmar':
+          ratio = training_data['calmar_ratio']
+          ratio_normalized = jh.normalize(ratio, -.5, 30)
+        elif ratio_config == 'sortiono':
+          ratio = training_data['sortino_ratio']
+          ratio_normalized = jh.normalize(ratio, -.5, 15)
+        elif ratio_config == 'omega':
+          ratio = training_data['omega_ratio']
+          ratio_normalized = jh.normalize(ratio, -.5, 5)
+        else:
+          raise ValueError(
+            'The entered ratio configuration `{}` for the optimization is unknown. Choose between sharpe, calmar, sortino and omega.'.format(
+              ratio_config))
+
+        if ratio < 0:
+          score = 0.0001
+        else:
+          score = total_effect_rate * ratio_normalized
       else:
-        raise ValueError(
-          'The entered ratio configuration `{}` for the optimization is unknown. Choose between sharpe, calmar, sortino and omega.'.format(
-            ratio_config))
-
-      if ratio < 0:
         score = 0.0001
-      else:
-        score = total_effect_rate * ratio_normalized
-    else:
-      score = 0.0001
+    except:
+        score = 0.0001
+    finally:
+      # reset store
+      store.reset()
 
-    # reset store
-    store.reset()
+      # you can access the entire dictionary from "para"
+      parameter_dict = hp.para_dict
 
-    # you can access the entire dictionary from "para"
-    parameter_dict = hp.para_dict
+      # save the score in the copy of the dictionary
+      parameter_dict["score"] = score
 
-    # save the score in the copy of the dictionary
-    parameter_dict["score"] = score
-
-    # append parameter dictionary to pandas dataframe
-    search_data = pd.read_csv(self.path)
-    search_data_new = pd.DataFrame(parameter_dict, columns=list(self.search_space.keys()) + ["score"], index=[0])
-    search_data = search_data.append(search_data_new)
-    search_data.to_csv(self.path, index=False)
+      # append parameter dictionary to pandas dataframe
+      search_data = pd.read_csv(self.path)
+      search_data_new = pd.DataFrame(parameter_dict, columns=list(self.search_space.keys()) + ["score"], index=[0])
+      search_data = search_data.append(search_data_new)
+      search_data.to_csv(self.path, index=False)
 
     return score
 

@@ -1,5 +1,5 @@
-import itertools
 import os
+import traceback
 from math import log10
 from multiprocessing import cpu_count
 
@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 import jesse.helpers as jh
+import jesse.services.logger as logger
 import jesse.services.required_candles as required_candles
 from jesse import exceptions
 from jesse.config import config
@@ -117,8 +118,9 @@ class Optimizer():
           score = total_effect_rate * ratio_normalized
       else:
         score = 0.0001
-    except:
-        score = 0.0001
+    except Exception as e:
+      logger.error("".join(traceback.TracebackException.from_exception(e).format()))
+      score = 0.0001
     finally:
       # reset store
       store.reset()
@@ -163,9 +165,9 @@ class Optimizer():
     self.search_space = self.get_search_space()
 
     # Later use actual search space combinations to determin n_iter
-    #keys, values = zip(*self.search_space.items())
-    #combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
-    #combinations_count = len(combinations)
+    # keys, values = zip(*self.search_space.items())
+    # combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    # combinations_count = len(combinations)
 
     mem = None
 

@@ -149,12 +149,12 @@ class Optimizer():
       elif st_hp['type'] is float:
         if not 'step' in st_hp:
           st_hp['step'] = 0.1
-        hp[st_hp['name']] = list(np.arange(st_hp['min'], st_hp['max'], st_hp['step']))
+        hp[st_hp['name']] = list(np.arange(st_hp['min'], st_hp['max'] + st_hp['step'], st_hp['step']))
       elif st_hp['type'] is bool:
         hp[st_hp['name']] = [True, False]
       else:
         raise TypeError('Only int, bool and float types are implemented')
-
+      print(hp[st_hp['name']])
     return hp
 
   def run(self):

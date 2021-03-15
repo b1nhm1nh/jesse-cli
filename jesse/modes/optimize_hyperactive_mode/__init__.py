@@ -145,7 +145,7 @@ class Optimizer():
       if st_hp['type'] is int:
         if not 'step' in st_hp:
           st_hp['step'] = 1
-        hp[st_hp['name']] = list(range(st_hp['min'], st_hp['max'], st_hp['step']))
+        hp[st_hp['name']] = list(range(st_hp['min'], st_hp['max'] + st_hp['step'], st_hp['step']))
       elif st_hp['type'] is float:
         if not 'step' in st_hp:
           st_hp['step'] = 0.1

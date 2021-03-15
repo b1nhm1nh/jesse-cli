@@ -155,7 +155,6 @@ class Optimizer():
         hp[st_hp['name']] = [True, False]
       else:
         raise TypeError('Only int, bool and float types are implemented')
-      print(hp[st_hp['name']])
     return hp
 
   def run(self):

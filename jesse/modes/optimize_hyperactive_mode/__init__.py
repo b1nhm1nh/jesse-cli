@@ -120,7 +120,7 @@ class Optimizer():
         score = 0.0001
     except Exception as e:
       logger.error("".join(traceback.TracebackException.from_exception(e).format()))
-      score = 0.0001
+      score = np.nan
     finally:
       # reset store
       store.reset()

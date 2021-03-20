@@ -122,8 +122,6 @@ class Optimizer():
       logger.error("".join(traceback.TracebackException.from_exception(e).format()))
       score = np.nan
     finally:
-      # reset store
-      store.reset()
 
       # you can access the entire dictionary from "para"
       parameter_dict = hp.para_dict
@@ -131,11 +129,17 @@ class Optimizer():
       # save the score in the copy of the dictionary
       parameter_dict["score"] = score
 
+      # save the daily_returns in the copy of the dictionary
+      parameter_dict["daily_returns"] = pd.Series(store.app.daily_balance).pct_change(1).values
+
       # append parameter dictionary to pandas dataframe
       search_data = pd.read_csv(self.path)
-      search_data_new = pd.DataFrame(parameter_dict, columns=list(self.search_space.keys()) + ["score"], index=[0])
+      search_data_new = pd.DataFrame(parameter_dict, columns=list(self.search_space.keys()) + ["score", "daily_returns"], index=[0])
       search_data = search_data.append(search_data_new)
       search_data.to_csv(self.path, index=False)
+
+      # reset store
+      store.reset()
 
     return score
 
@@ -241,33 +245,16 @@ class Optimizer():
         self.optimizer
       ))
 
-    # Not suited for this usecase: Uncaught Exception: MemoryError: Unable to allocate XX TiB for an array with shape...
-
-    # elif self.optimizer == "BayesianOptimizer":
-    #   optimizer = hyperactive.BayesianOptimizer(
-    #     xi=0.03, warm_start_smbo=mem, rand_rest_p=0.1
-    #   )
-    # elif self.optimizer == "TreeStructuredParzenEstimators":
-    #   optimizer = hyperactive.TreeStructuredParzenEstimators(
-    #     gamma_tpe=0.5, warm_start_smbo=mem, rand_rest_p=0.05
-    #   )
-    # elif self.optimizer == "DecisionTreeOptimizer":
-    #   optimizer = hyperactive.DecisionTreeOptimizer(
-    #     tree_regressor="random_forest",
-    #     xi=0.02,
-    #     warm_start_smbo=mem,
-    #     rand_rest_p=0.05,
-    #   )
-
     if mem is None or mem.empty:
       # init empty pandas dataframe
-      search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score"])
+      search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score", "daily_returns"])
       search_data.to_csv(self.path, index=False)
       hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer,
                        n_iter=self.iterations,
                        n_jobs=self.cpu_cores)
     else:
-      hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer, memory_warm_start=mem,
+      warm_start = mem.drop('daily_returns')
+      hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer, memory_warm_start=warm_start,
                        n_iter=self.iterations,
                        n_jobs=self.cpu_cores)
     hyper.run()

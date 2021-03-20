@@ -135,11 +135,14 @@ class Optimizer():
       daily_balance = str(store.app.daily_balance)
 
       # append parameter dictionary to pandas dataframe
-      search_data = pd.read_csv(self.path, sep=";", na_values='NaN')
+      with open(self.path, "r") as f:
+        search_data = pd.read_csv(f, sep=";", na_values='NaN')
       search_data_new = pd.DataFrame(parameter_dict, columns=list(self.search_space.keys()) + ["score"], index=[0])
       search_data_new['daily_balance'] = daily_balance
       search_data = search_data.append(search_data_new)
-      search_data.to_csv(self.path, sep=";", index=False, na_rep='NaN')
+      with open(self.path, "w") as f:
+        search_data.to_csv(f, sep=";", index=False, na_rep='NaN')
+
 
       # reset store
       store.reset()
@@ -180,7 +183,8 @@ class Optimizer():
     mem = None
 
     if jh.file_exists(self.path):
-      mem = pd.read_csv(self.path, sep=";", na_values='NaN')
+      with open(self.path, "r") as f:
+        mem = pd.read_csv(f, sep=";", na_values='NaN')
       if not mem.empty:
         if not click.confirm('Previous optimization results for {} exists. Continue?'.format(self.study_name),
                          default=True):
@@ -250,7 +254,9 @@ class Optimizer():
     if mem is None or mem.empty:
       # init empty pandas dataframe
       search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score", "daily_balance"])
-      search_data.to_csv(self.path, sep=";", index=False, na_rep='NaN')
+      with open(self.path, "w") as f:
+        search_data.to_csv(f, sep=";", index=False, na_rep='NaN')
+
       hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer,
                        n_iter=self.iterations,
                        n_jobs=self.cpu_cores)
@@ -262,7 +268,8 @@ class Optimizer():
     hyper.run()
 
   def validate_optimization(self, cscv_nbins: int = 10):
-    results = pd.read_csv(self.path, sep=";", converters={'daily_balance': from_np_array}, na_values='NaN')
+    with open(self.path, "r") as f:
+      results = pd.read_csv(f, sep=";", converters={'daily_balance': from_np_array}, na_values='NaN')
     results.drop("score", 1, inplace=True)
     multi_index = results.columns.tolist()
     multi_index.remove('daily_balance')

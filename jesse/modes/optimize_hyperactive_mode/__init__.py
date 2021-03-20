@@ -1,3 +1,4 @@
+import ast
 import os
 import traceback
 from math import log10
@@ -18,6 +19,7 @@ from jesse.routes import router
 from jesse.services import metrics as stats
 from jesse.services.validators import validate_routes
 from jesse.store import store
+from .overfitting import CSCV
 
 os.environ['NUMEXPR_MAX_THREADS'] = str(cpu_count())
 
@@ -122,8 +124,6 @@ class Optimizer():
       logger.error("".join(traceback.TracebackException.from_exception(e).format()))
       score = np.nan
     finally:
-      # reset store
-      store.reset()
 
       # you can access the entire dictionary from "para"
       parameter_dict = hp.para_dict
@@ -131,11 +131,18 @@ class Optimizer():
       # save the score in the copy of the dictionary
       parameter_dict["score"] = score
 
+      # save the daily_returns in the copy of the dictionary
+      daily_balance = str(store.app.daily_balance)
+
       # append parameter dictionary to pandas dataframe
-      search_data = pd.read_csv(self.path)
+      search_data = pd.read_csv(self.path, sep=";")
       search_data_new = pd.DataFrame(parameter_dict, columns=list(self.search_space.keys()) + ["score"], index=[0])
+      search_data_new['daily_balance'] = daily_balance
       search_data = search_data.append(search_data_new)
-      search_data.to_csv(self.path, index=False)
+      search_data.to_csv(self.path, sep=";", index=False)
+
+      # reset store
+      store.reset()
 
     return score
 
@@ -150,7 +157,8 @@ class Optimizer():
         if not 'step' in st_hp:
           st_hp['step'] = 0.1
         decs = str(st_hp['step'])[::-1].find('.')
-        hp[st_hp['name']] = list(np.trunc(np.arange(st_hp['min'], st_hp['max'] + st_hp['step'], st_hp['step']) * 10 ** decs) / (10 ** decs))
+        hp[st_hp['name']] = list(
+          np.trunc(np.arange(st_hp['min'], st_hp['max'] + st_hp['step'], st_hp['step']) * 10 ** decs) / (10 ** decs))
       elif st_hp['type'] is bool:
         hp[st_hp['name']] = [True, False]
       else:
@@ -172,7 +180,7 @@ class Optimizer():
     mem = None
 
     if jh.file_exists(self.path):
-      mem = pd.read_csv(self.path)
+      mem = pd.read_csv(self.path, sep=";")
       if not mem.empty:
         if click.confirm('Previous optimization results for {} exists. Continue?'.format(self.study_name),
                          default=True):
@@ -241,36 +249,34 @@ class Optimizer():
         self.optimizer
       ))
 
-    # Not suited for this usecase: Uncaught Exception: MemoryError: Unable to allocate XX TiB for an array with shape...
-
-    # elif self.optimizer == "BayesianOptimizer":
-    #   optimizer = hyperactive.BayesianOptimizer(
-    #     xi=0.03, warm_start_smbo=mem, rand_rest_p=0.1
-    #   )
-    # elif self.optimizer == "TreeStructuredParzenEstimators":
-    #   optimizer = hyperactive.TreeStructuredParzenEstimators(
-    #     gamma_tpe=0.5, warm_start_smbo=mem, rand_rest_p=0.05
-    #   )
-    # elif self.optimizer == "DecisionTreeOptimizer":
-    #   optimizer = hyperactive.DecisionTreeOptimizer(
-    #     tree_regressor="random_forest",
-    #     xi=0.02,
-    #     warm_start_smbo=mem,
-    #     rand_rest_p=0.05,
-    #   )
-
     if mem is None or mem.empty:
       # init empty pandas dataframe
-      search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score"])
-      search_data.to_csv(self.path, index=False)
+      search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score", "daily_balance"])
+      search_data.to_csv(self.path, sep=";", index=False)
       hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer,
                        n_iter=self.iterations,
                        n_jobs=self.cpu_cores)
     else:
+      mem.drop('daily_balance', 1, inplace=True)
       hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer, memory_warm_start=mem,
                        n_iter=self.iterations,
                        n_jobs=self.cpu_cores)
     hyper.run()
+
+  def validate_optimization(self, cscv_nbins: int = 10):
+    results = pd.read_csv(self.path, sep=";", converters={'daily_balance': from_np_array})
+    results.drop("score", 1, inplace=True)
+    multi_index = results.columns.tolist()
+    multi_index.remove('daily_balance')
+    results.set_index(multi_index, drop=True, inplace=True)
+    new_columns = results.index.to_flat_index()
+    daily_percentage = pd.DataFrame(np.vstack(results.daily_balance.pct_change(1).values)).transpose()
+    daily_percentage.columns = new_columns
+    daily_percentage.fillna(0, inplace=True)
+    cscv_objective = lambda r: r.mean()
+    cscv = CSCV(n_bins=cscv_nbins, objective=cscv_objective)
+    cscv.add_daily_returns(results)
+    cscv.estimate_overfitting(name=self.study_name)
 
 
 def optimize_mode_hyperactive(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int, optimizer: str,
@@ -287,7 +293,13 @@ def optimize_mode_hyperactive(start_date: str, finish_date: str, optimal_total: 
 
   optimizer = Optimizer(training_candles, optimal_total, cpu_cores, optimizer, iterations)
 
+  print('Starting optimization...')
+
   optimizer.run()
+
+  print('Starting validation...')
+
+  optimizer.validate_optimization()
 
 
 def get_training_candles(start_date_str: str, finish_date_str: str):
@@ -296,3 +308,7 @@ def get_training_candles(start_date_str: str, finish_date_str: str):
   training_candles = load_candles(start_date_str, finish_date_str)
 
   return training_candles
+
+
+def from_np_array(array_string):
+  return np.array(ast.literal_eval(array_string))

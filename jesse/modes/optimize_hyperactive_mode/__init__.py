@@ -185,6 +185,10 @@ class Optimizer():
         if click.confirm('Previous optimization results for {} exists. Continue?'.format(self.study_name),
                          default=True):
           self.iterations = self.iterations - len(mem)
+          if self.iterations <= 0:
+            raise ValueError('You choose {} iterations, but the previous optimization already counts {} iterations.'.format(
+              self.iterations, len(mem)
+            ))
         else:
           mem = None
 

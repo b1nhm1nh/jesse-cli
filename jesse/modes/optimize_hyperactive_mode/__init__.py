@@ -1,4 +1,5 @@
 import ast
+import csv
 import os
 import traceback
 from math import log10
@@ -131,18 +132,17 @@ class Optimizer():
       # save the score in the copy of the dictionary
       parameter_dict["score"] = score
 
-      # save the daily_returns in the copy of the dictionary
-      daily_balance = str(store.app.daily_balance)
+      if score:
+        # save the daily_returns in the copy of the dictionary
+        parameter_dict["daily_balance"] = str(store.app.daily_balance)
+      else:
+        parameter_dict["daily_balance"] = np.nan
 
-      # append parameter dictionary to pandas dataframe
-      with open(self.path, "r") as f:
-        search_data = pd.read_csv(f, sep=";", na_values='NaN')
-      search_data_new = pd.DataFrame(parameter_dict, columns=list(self.search_space.keys()) + ["score"], index=[0])
-      search_data_new['daily_balance'] = daily_balance
-      search_data = search_data.append(search_data_new)
-      with open(self.path, "w") as f:
-        search_data.to_csv(f, sep=";", index=False, na_rep='NaN')
-
+      # append parameter dictionary to csv
+      with open(self.path, "a") as f:
+        writer = csv.writer(f, delimiter=';')
+        fields = parameter_dict.values()
+        writer.writerow(fields)
 
       # reset store
       store.reset()
@@ -184,10 +184,10 @@ class Optimizer():
 
     if jh.file_exists(self.path):
       with open(self.path, "r") as f:
-        mem = pd.read_csv(f, sep=";", na_values='NaN')
+        mem = pd.read_csv(f, sep=";", na_values='nan')
       if not mem.empty:
         if not click.confirm('Previous optimization results for {} exists. Continue?'.format(self.study_name),
-                         default=True):
+                             default=True):
           mem = None
 
     if self.optimizer == "RandomSearchOptimizer":
@@ -255,7 +255,7 @@ class Optimizer():
       # init empty pandas dataframe
       search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score", "daily_balance"])
       with open(self.path, "w") as f:
-        search_data.to_csv(f, sep=";", index=False, na_rep='NaN')
+        search_data.to_csv(f, sep=";", index=False, na_rep='nan')
 
       hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer,
                        n_iter=self.iterations,
@@ -269,12 +269,13 @@ class Optimizer():
 
   def validate_optimization(self, cscv_nbins: int = 10):
     with open(self.path, "r") as f:
-      results = pd.read_csv(f, sep=";", converters={'daily_balance': from_np_array}, na_values='NaN')
+      results = pd.read_csv(f, sep=";", converters={'daily_balance': from_np_array}, na_values='nan')
     results.drop("score", 1, inplace=True)
     multi_index = results.columns.tolist()
     multi_index.remove('daily_balance')
     results.set_index(multi_index, drop=True, inplace=True)
     new_columns = results.index.to_flat_index()
+    # TODO make all daily_balances same length / forward fill. Some might be np.nan - Daily pct_change = 0?
     daily_percentage = pd.DataFrame(np.vstack(results.daily_balance.pct_change(1).values)).transpose()
     daily_percentage.columns = new_columns
     daily_percentage.fillna(0, inplace=True)

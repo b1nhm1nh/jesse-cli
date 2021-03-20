@@ -115,11 +115,11 @@ class Optimizer():
               ratio_config))
 
         if ratio < 0:
-          score = 0.0001
+          score = np.nan
         else:
           score = total_effect_rate * ratio_normalized
       else:
-        score = 0.0001
+        score = np.nan
     except Exception as e:
       logger.error("".join(traceback.TracebackException.from_exception(e).format()))
       score = np.nan

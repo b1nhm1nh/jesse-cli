@@ -276,19 +276,25 @@ class Optimizer():
     multi_index.remove('daily_balance')
     results.set_index(multi_index, drop=True, inplace=True)
     new_columns = results.index.to_flat_index()
-    # TODO make all daily_balances same length / forward fill. Some might be np.nan - Daily pct_change = 0?
-    pct_change = results.daily_balance.pct_change(1).to_numpy()
-    print(pct_change)
-    vstack = np.vstack(pct_change)
-    print(vstack)
+
+    daily_balance = results.daily_balance.to_numpy()
+    prepared = prepare_daily_percentage(daily_balance)
+    vstack = np.vstack(prepared)
+
     daily_percentage = pd.DataFrame(vstack).transpose()
     daily_percentage.columns = new_columns
-    daily_percentage.fillna(0, inplace=True)
+
     cscv_objective = lambda r: r.mean()
     cscv = CSCV(n_bins=cscv_nbins, objective=cscv_objective)
     cscv.add_daily_returns(results)
     cscv.estimate_overfitting(name=self.study_name)
 
+def prepare_daily_percentage(a):
+  A = np.full((len(a), max(map(len, a))), np.nan)
+  for i, aa in enumerate(a):
+    A[i, :len(aa)] = aa
+  ff = jh.np_ffill(A, 1)
+  return np.diff(ff) / ff[:,:-1] * 100
 
 def optimize_mode_hyperactive(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int, optimizer: str,
                               iterations: int) -> None:

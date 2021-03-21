@@ -286,7 +286,7 @@ class Optimizer():
 
     cscv_objective = lambda r: r.mean()
     cscv = CSCV(n_bins=cscv_nbins, objective=cscv_objective)
-    cscv.add_daily_returns(results)
+    cscv.add_daily_returns(daily_percentage)
     cscv.estimate_overfitting(name=self.study_name)
 
 # first make same length

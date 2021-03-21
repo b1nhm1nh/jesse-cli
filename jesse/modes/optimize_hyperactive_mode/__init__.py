@@ -289,6 +289,9 @@ class Optimizer():
     cscv.add_daily_returns(results)
     cscv.estimate_overfitting(name=self.study_name)
 
+# first make same length
+# forward fill returns
+# return percentage change
 def prepare_daily_percentage(a):
   A = np.full((len(a), max(map(len, a))), np.nan)
   for i, aa in enumerate(a):

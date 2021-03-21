@@ -270,13 +270,18 @@ class Optimizer():
   def validate_optimization(self, cscv_nbins: int = 10):
     with open(self.path, "r") as f:
       results = pd.read_csv(f, sep=";", converters={'daily_balance': from_np_array}, na_values='nan')
+    results.dropna(inplace=True)
     results.drop("score", 1, inplace=True)
     multi_index = results.columns.tolist()
     multi_index.remove('daily_balance')
     results.set_index(multi_index, drop=True, inplace=True)
     new_columns = results.index.to_flat_index()
     # TODO make all daily_balances same length / forward fill. Some might be np.nan - Daily pct_change = 0?
-    daily_percentage = pd.DataFrame(np.vstack(results.daily_balance.pct_change(1).values)).transpose()
+    pct_change = results.daily_balance.pct_change(1).to_numpy()
+    print(pct_change)
+    vstack = np.vstack(pct_change)
+    print(vstack)
+    daily_percentage = pd.DataFrame(vstack).transpose()
     daily_percentage.columns = new_columns
     daily_percentage.fillna(0, inplace=True)
     cscv_objective = lambda r: r.mean()

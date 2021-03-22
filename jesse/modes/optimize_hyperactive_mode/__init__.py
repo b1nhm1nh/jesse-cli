@@ -132,11 +132,11 @@ class Optimizer():
       # save the score in the copy of the dictionary
       parameter_dict["score"] = score
 
-      if score:
-        # save the daily_returns in the copy of the dictionary
-        parameter_dict["daily_balance"] = str(store.app.daily_balance)
-      else:
-        parameter_dict["daily_balance"] = np.nan
+      # if score:
+      #   # save the daily_returns in the copy of the dictionary
+      #   parameter_dict["daily_balance"] = str(store.app.daily_balance)
+      # else:
+      #   parameter_dict["daily_balance"] = np.nan
 
       # append parameter dictionary to csv
       with open(self.path, "a") as f:
@@ -253,7 +253,8 @@ class Optimizer():
 
     if mem is None or mem.empty:
       # init empty pandas dataframe
-      search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score", "daily_balance"])
+      #search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score", "daily_balance"])
+      search_data = pd.DataFrame(columns=list(self.search_space.keys()) + ["score"])
       with open(self.path, "w") as f:
         search_data.to_csv(f, sep=";", index=False, na_rep='nan')
 
@@ -261,33 +262,33 @@ class Optimizer():
                        n_iter=self.iterations,
                        n_jobs=self.cpu_cores)
     else:
-      mem.drop('daily_balance', 1, inplace=True)
+      #mem.drop('daily_balance', 1, inplace=True)
       hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer, memory_warm_start=mem,
                        n_iter=self.iterations,
                        n_jobs=self.cpu_cores)
     hyper.run()
 
-  def validate_optimization(self, cscv_nbins: int = 10):
-    with open(self.path, "r") as f:
-      results = pd.read_csv(f, sep=";", converters={'daily_balance': from_np_array}, na_values='nan')
-    results.dropna(inplace=True)
-    results.drop("score", 1, inplace=True)
-    multi_index = results.columns.tolist()
-    multi_index.remove('daily_balance')
-    results.set_index(multi_index, drop=True, inplace=True)
-    new_columns = results.index.to_flat_index()
-
-    daily_balance = results.daily_balance.to_numpy()
-    prepared = prepare_daily_percentage(daily_balance)
-    vstack = np.vstack(prepared)
-
-    daily_percentage = pd.DataFrame(vstack).transpose()
-    daily_percentage.columns = new_columns
-
-    cscv_objective = lambda r: r.mean()
-    cscv = CSCV(n_bins=cscv_nbins, objective=cscv_objective)
-    cscv.add_daily_returns(daily_percentage)
-    cscv.estimate_overfitting(name=self.study_name)
+  # def validate_optimization(self, cscv_nbins: int = 10):
+  #   with open(self.path, "r") as f:
+  #     results = pd.read_csv(f, sep=";", converters={'daily_balance': from_np_array}, na_values='nan')
+  #   results.dropna(inplace=True)
+  #   results.drop("score", 1, inplace=True)
+  #   multi_index = results.columns.tolist()
+  #   multi_index.remove('daily_balance')
+  #   results.set_index(multi_index, drop=True, inplace=True)
+  #   new_columns = results.index.to_flat_index()
+  #
+  #   daily_balance = results.daily_balance.to_numpy()
+  #   prepared = prepare_daily_percentage(daily_balance)
+  #   vstack = np.vstack(prepared)
+  #
+  #   daily_percentage = pd.DataFrame(vstack).transpose()
+  #   daily_percentage.columns = new_columns
+  #
+  #   cscv_objective = lambda r: r.mean()
+  #   cscv = CSCV(n_bins=cscv_nbins, objective=cscv_objective)
+  #   cscv.add_daily_returns(daily_percentage)
+  #   cscv.estimate_overfitting(name=self.study_name)
 
 # first make same length
 # forward fill returns

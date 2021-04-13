@@ -15,7 +15,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 if jh.python_version() < 3.7:
     print(
         jh.color(
-            'Jesse requires Python version above 3.7. Yours is {}'.format(jh.python_version()),
+            f'Jesse requires Python version above 3.7. Yours is {jh.python_version()}',
             'red'
         )
     )
@@ -68,10 +68,6 @@ if is_jesse_project:
 
 
 def register_custom_exception_handler() -> None:
-    """
-
-    :return:
-    """
     import sys
     import threading
     import traceback
@@ -111,58 +107,52 @@ def register_custom_exception_handler() -> None:
             exceptions.CandleNotFoundInDatabase
         ]:
             click.clear()
-            print('=' * 30 + ' EXCEPTION TRACEBACK:')
+            print(f"{'=' * 30} EXCEPTION TRACEBACK:")
             traceback.print_tb(exc_traceback, file=sys.stdout)
             print("=" * 73)
             print(
                 '\n',
                 jh.color('Uncaught Exception:', 'red'),
-                jh.color('{}: {}'.format(exc_type.__name__, exc_value), 'yellow')
+                jh.color(f'{exc_type.__name__}: {exc_value}', 'yellow')
             )
             return
 
         # send notifications if it's a live session
         if jh.is_live():
             jesse_logger.error(
-                '{}: {}'.format(exc_type.__name__, exc_value)
+                f'{exc_type.__name__}: {exc_value}'
             )
 
         if jh.is_live() or jh.is_collecting_data():
             logging.error("Uncaught Exception:", exc_info=(exc_type, exc_value, exc_traceback))
         else:
-            print('=' * 30 + ' EXCEPTION TRACEBACK:')
+            print(f"{'=' * 30} EXCEPTION TRACEBACK:")
             traceback.print_tb(exc_traceback, file=sys.stdout)
             print("=" * 73)
             print(
                 '\n',
                 jh.color('Uncaught Exception:', 'red'),
-                jh.color('{}: {}'.format(exc_type.__name__, exc_value), 'yellow')
+                jh.color(f'{exc_type.__name__}: {exc_value}', 'yellow')
             )
 
         if jh.is_paper_trading():
             print(
                 jh.color(
-                    'An uncaught exception was raised. Check the log file at:\n{}'.format(
-                        'storage/logs/paper-trade.txt'
-                    ),
+                    'An uncaught exception was raised. Check the log file at:\nstorage/logs/paper-trade.txt',
                     'red'
                 )
             )
         elif jh.is_livetrading():
             print(
                 jh.color(
-                    'An uncaught exception was raised. Check the log file at:\n{}'.format(
-                        'storage/logs/live-trade.txt'
-                    ),
+                    'An uncaught exception was raised. Check the log file at:\nstorage/logs/live-trade.txt',
                     'red'
                 )
             )
         elif jh.is_collecting_data():
             print(
                 jh.color(
-                    'An uncaught exception was raised. Check the log file at:\n{}'.format(
-                        'storage/logs/collect.txt'
-                    ),
+                    'An uncaught exception was raised. Check the log file at:\nstorage/logs/collect.txt',
                     'red'
                 )
             )
@@ -181,59 +171,53 @@ def register_custom_exception_handler() -> None:
                 exceptions.CandleNotFoundInDatabase
             ]:
                 click.clear()
-                print('=' * 30 + ' EXCEPTION TRACEBACK:')
+                print(f"{'=' * 30} EXCEPTION TRACEBACK:")
                 traceback.print_tb(args.exc_traceback, file=sys.stdout)
                 print("=" * 73)
                 print(
                     '\n',
                     jh.color('Uncaught Exception:', 'red'),
-                    jh.color('{}: {}'.format(args.exc_type.__name__, args.exc_value), 'yellow')
+                    jh.color(f'{args.exc_type.__name__}: {args.exc_value}', 'yellow')
                 )
                 return
 
             # send notifications if it's a live session
             if jh.is_live():
                 jesse_logger.error(
-                    '{}: {}'.format(args.exc_type.__name__, args.exc_value)
+                    f'{args.exc_type.__name__}: { args.exc_value}'
                 )
 
             if jh.is_live() or jh.is_collecting_data():
                 logging.error("Uncaught Exception:",
                               exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
             else:
-                print('=' * 30 + ' EXCEPTION TRACEBACK:')
+                print(f"{'=' * 30} EXCEPTION TRACEBACK:")
                 traceback.print_tb(args.exc_traceback, file=sys.stdout)
                 print("=" * 73)
                 print(
                     '\n',
                     jh.color('Uncaught Exception:', 'red'),
-                    jh.color('{}: {}'.format(args.exc_type.__name__, args.exc_value), 'yellow')
+                    jh.color(f'{args.exc_type.__name__}: {args.exc_value}', 'yellow')
                 )
 
             if jh.is_paper_trading():
                 print(
                     jh.color(
-                        'An uncaught exception was raised. Check the log file at:\n{}'.format(
-                            'storage/logs/paper-trade.txt'
-                        ),
+                        'An uncaught exception was raised. Check the log file at:\nstorage/logs/paper-trade.txt',
                         'red'
                     )
                 )
             elif jh.is_livetrading():
                 print(
                     jh.color(
-                        'An uncaught exception was raised. Check the log file at:\n{}'.format(
-                            'storage/logs/live-trade.txt'
-                        ),
+                        'An uncaught exception was raised. Check the log file at:\nstorage/logs/live-trade.txt',
                         'red'
                     )
                 )
             elif jh.is_collecting_data():
                 print(
                     jh.color(
-                        'An uncaught exception was raised. Check the log file at:\n{}'.format(
-                            'storage/logs/collect.txt'
-                        ),
+                        'An uncaught exception was raised. Check the log file at:\nstorage/logs/collect.txt',
                         'red'
                     )
                 )
@@ -432,7 +416,12 @@ def routes(dna: bool) -> None:
     routes_mode.run(dna)
 
 
-if 'plugins' in ls:
+live_package_exists = True
+try:
+    import jesse_live
+except ModuleNotFoundError:
+    live_package_exists = False
+if live_package_exists:
     @cli.command()
     def collect() -> None:
         """
@@ -447,7 +436,7 @@ if 'plugins' in ls:
 
         register_custom_exception_handler()
 
-        from plugins.live.collect_mode import run
+        from jesse_live.live.collect_mode import run
 
         run()
 
@@ -456,8 +445,7 @@ if 'plugins' in ls:
     @click.option('--testdrive/--no-testdrive', default=False)
     @click.option('--debug/--no-debug', default=False)
     @click.option('--dev/--no-dev', default=False)
-    @click.option('--fee/--no-fee', default=True)
-    def live(testdrive: bool, debug: bool, dev: bool, fee: bool) -> None:
+    def live(testdrive: bool, debug: bool, dev: bool) -> None:
         """
         trades in real-time on exchange with REAL money
         """
@@ -473,28 +461,22 @@ if 'plugins' in ls:
         # debug flag
         config['app']['debug_mode'] = debug
 
-        from plugins.live import init
+        from jesse_live import init
         from jesse.services.selectors import get_exchange
-
-        # fee flag
-        if not fee:
-            for e in config['app']['trading_exchanges']:
-                config['env']['exchanges'][e]['fee'] = 0
-                get_exchange(e).fee = 0
+        live_config = locate('live-config.config')
 
         # inject live config
-        init(config)
+        init(config, live_config)
 
         # execute live session
-        from plugins.live.live_mode import run
+        from jesse_live.live_mode import run
         run(dev)
 
 
     @cli.command()
     @click.option('--debug/--no-debug', default=False)
     @click.option('--dev/--no-dev', default=False)
-    @click.option('--fee/--no-fee', default=True)
-    def paper(debug: bool, dev: bool, fee: bool) -> None:
+    def paper(debug: bool, dev: bool) -> None:
         """
         trades in real-time on exchange with PAPER money
         """
@@ -509,18 +491,32 @@ if 'plugins' in ls:
         # debug flag
         config['app']['debug_mode'] = debug
 
-        from plugins.live import init
+        from jesse_live import init
         from jesse.services.selectors import get_exchange
-
-        # fee flag
-        if not fee:
-            for e in config['app']['trading_exchanges']:
-                config['env']['exchanges'][e]['fee'] = 0
-                get_exchange(e).fee = 0
+        live_config = locate('live-config.config')
 
         # inject live config
-        init(config)
+        init(config, live_config)
 
         # execute live session
-        from plugins.live.live_mode import run
+        from jesse_live.live_mode import run
         run(dev)
+
+    @cli.command()
+    @click.option('--email', prompt='Email')
+    @click.option('--password', prompt='Password', hide_input=True)
+    def login(email, password) -> None:
+        """
+        (Initially) Logins to the website.
+        """
+        validate_cwd()
+
+        # set trading mode
+        from jesse.config import config
+        config['app']['trading_mode'] = 'login'
+
+        register_custom_exception_handler()
+
+        from jesse_live.auth import login
+
+        login(email, password)

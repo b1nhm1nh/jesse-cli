@@ -15,8 +15,19 @@ class API:
         for e in jh.get_config('app.considering_exchanges'):
             if jh.is_live():
                 def initiate_ws(exchange_name: str) -> None:
-                    exchange_class = jh.get_config('app.live_drivers.{}'.format(exchange_name))
-                    self.drivers[exchange_name] = exchange_class()
+                    exchange_class = jh.get_config(f'app.live_drivers.{exchange_name}')
+                    try:
+                        self.drivers[exchange_name] = exchange_class()
+                    except TypeError:
+                        from jesse_live.info import SUPPORTED_EXCHANGES
+
+                        exchange_names = ''
+                        for se in SUPPORTED_EXCHANGES:
+                            exchange_names += '\n' + '"' + se['name'] + '"'
+
+                        error_msg = f'Driver for "{exchange_name}" is not supported yet. Supported exchanges are: {exchange_names}'
+                        jh.error(error_msg, force_print=True)
+                        jh.terminate_app()
 
                 threading.Thread(target=initiate_ws, args=[e]).start()
             else:

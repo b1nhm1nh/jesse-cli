@@ -4,6 +4,7 @@ from typing import Dict, Union
 import arrow
 import click
 import numpy as np
+import pandas as pd
 
 import jesse.helpers as jh
 import jesse.services.metrics as stats
@@ -47,7 +48,7 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
 
     if not jh.should_execute_silently():
         # print candles table
-        key = '{}-{}'.format(config['app']['considering_candles'][0][0], config['app']['considering_candles'][0][1])
+        key = f"{config['app']['considering_candles'][0][0]}-{config['app']['considering_candles'][0][1]}"
         table.key_value(stats.candles(candles[key]['candles']), 'candles', alignments=('left', 'right'))
         print('\n')
 
@@ -90,7 +91,7 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
                 change.append(((last.close - first.close) / first.close) * 100.0)
 
             data = report.portfolio_metrics()
-            data.append(['Market Change', str(round(np.average(change), 2)) + "%"])
+            data.append(['Market Change', f"{str(round(np.average(change), 2))}%"])
             print('\n')
             table.key_value(data, 'Metrics', alignments=('left', 'right'))
             print('\n')
@@ -103,7 +104,32 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
 
             # QuantStats' report
             if full_reports:
-                quantstats.quantstats_tearsheet()
+
+              price_data = []
+
+              # load close candles for Buy and hold and calculate pct_change
+              for index, c in enumerate(config['app']['considering_candles']):
+                exchange, symbol = c[0], c[1]
+                if exchange in config['app']['trading_exchanges'] and symbol in config['app']['trading_symbols']:
+                    # fetch from database
+                  candles_tuple = Candle.select(
+                    Candle.timestamp, Candle.close
+                  ).where(
+                    Candle.timestamp.between(jh.date_to_timestamp(start_date), jh.date_to_timestamp(finish_date) - 60000),
+                    Candle.exchange == exchange,
+                    Candle.symbol == symbol
+                  ).order_by(Candle.timestamp.asc()).tuples()
+
+                  candles = np.array(candles_tuple)
+
+                  timestamps = candles[:, 0]
+                  price_data.append(candles[:, 1])
+
+              price_data = np.transpose(price_data)
+              price_df = pd.DataFrame(price_data, index=pd.to_datetime(timestamps, unit="ms"), dtype=float).resample('D').mean()
+              price_pct_change = price_df.pct_change(1).fillna(0)
+              bh_daily_returns_all_routes = price_pct_change.mean(1)
+              quantstats.quantstats_tearsheet(bh_daily_returns_all_routes)
         else:
             print(jh.color('No trades were made.', 'yellow'))
 
@@ -136,7 +162,7 @@ def load_candles(start_date_str: str, finish_date_str: str) -> Dict[str, Dict[st
 
         key = jh.key(exchange, symbol)
 
-        cache_key = '{}-{}-'.format(start_date_str, finish_date_str) + key
+        cache_key = f"{start_date_str}-{finish_date_str}-{key}"
         cached_value = cache.get_value(cache_key)
         # if cache exists
         if cached_value:
@@ -157,11 +183,9 @@ def load_candles(start_date_str: str, finish_date_str: str) -> Dict[str, Dict[st
         required_candles_count = (finish_date - start_date) / 60_000
         if len(candles_tuple) == 0 or candles_tuple[-1][0] != finish_date or candles_tuple[0][0] != start_date:
             raise exceptions.CandleNotFoundInDatabase(
-                'Not enough candles for {}. Try running "jesse import-candles"'.format(symbol))
+                f'Not enough candles for {symbol}. Try running "jesse import-candles"')
         elif len(candles_tuple) != required_candles_count + 1:
-            raise exceptions.CandleNotFoundInDatabase('There are missing candles between {} => {}'.format(
-                start_date_str, finish_date_str
-            ))
+            raise exceptions.CandleNotFoundInDatabase(f'There are missing candles between {start_date_str} => {finish_date_str}')
 
         # cache it for near future calls
         cache.set_value(cache_key, tuple(candles_tuple), expire_seconds=60 * 60 * 24 * 7)
@@ -177,7 +201,7 @@ def load_candles(start_date_str: str, finish_date_str: str) -> Dict[str, Dict[st
 
 def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparameters=None) -> None:
     begin_time_track = time.time()
-    key = '{}-{}'.format(config['app']['considering_candles'][0][0], config['app']['considering_candles'][0][1])
+    key = f"{config['app']['considering_candles'][0][0]}-{config['app']['considering_candles'][0][1]}"
     first_candles_set = candles[key]['candles']
     length = len(first_candles_set)
     # to preset the array size for performance
@@ -289,7 +313,7 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
 
         # print executed time for the backtest session
         finish_time_track = time.time()
-        print('Executed backtest simulation in: ', '{} seconds'.format(round(finish_time_track - begin_time_track, 2)))
+        print('Executed backtest simulation in: ', f'{round(finish_time_track - begin_time_track, 2)} seconds')
 
     for r in router.routes:
         r.strategy._terminate()

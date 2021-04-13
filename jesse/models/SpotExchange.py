@@ -1,7 +1,7 @@
 import jesse.helpers as jh
 import jesse.services.logger as logger
 from jesse.enums import sides, order_types
-from jesse.exceptions import NegativeBalance
+from jesse.exceptions import NegativeBalance, InvalidConfig
 from jesse.models import Order
 from .Exchange import Exchange
 
@@ -20,6 +20,15 @@ class SpotExchange(Exchange):
 
     def __init__(self, name: str, starting_assets: list, fee_rate: float):
         super().__init__(name, starting_assets, fee_rate, 'spot')
+
+        from jesse.routes import router
+        # check if base assets are configured
+        for route in router.routes:
+          base_asset = jh.base_asset(route.symbol)
+          if base_asset not in self.available_assets:
+            raise InvalidConfig(
+              f"Jesse needs to know the balance of your base asset for spot mode. Please add {base_asset} to your exchanges assets config.")
+
 
     def wallet_balance(self, symbol=''):
         if symbol == '':
@@ -49,9 +58,7 @@ class SpotExchange(Exchange):
             self.available_assets[quote_asset] -= (abs(order.qty) * order.price) * (1 + self.fee_rate)
             if self.available_assets[quote_asset] < 0:
                 raise NegativeBalance(
-                    "Balance cannot go below zero in spot market. Available capital at {} for {} is {} but you're trying to sell {}".format(
-                        self.name, quote_asset, quote_balance, abs(order.qty * order.price)
-                    )
+                    f"Balance cannot go below zero in spot market. Available capital at {self.name} for {quote_asset} is {quote_balance} but you're trying to sell {abs(order.qty * order.price)}"
                 )
         # sell order
         else:
@@ -59,9 +66,7 @@ class SpotExchange(Exchange):
             new_base_balance = base_balance + order.qty
             if new_base_balance < 0:
                 raise NegativeBalance(
-                    "Balance cannot go below zero in spot market. Available capital at {} for {} is {} but you're trying to sell {}".format(
-                        self.name, base_asset, base_balance, abs(order.qty)
-                    )
+                    f"Balance cannot go below zero in spot market. Available capital at {self.name} for {base_asset} is {base_balance} but you're trying to sell {abs(order.qty)}"
                 )
 
             self.available_assets[base_asset] -= abs(order.qty)
@@ -69,18 +74,12 @@ class SpotExchange(Exchange):
         temp_new_quote_available_asset = self.available_assets[quote_asset]
         if jh.is_debuggable('balance_update') and temp_old_quote_available_asset != temp_new_quote_available_asset:
             logger.info(
-                'Available balance for {} on {} changed from {} to {}'.format(
-                    quote_asset, self.name,
-                    round(temp_old_quote_available_asset, 2), round(temp_new_quote_available_asset, 2)
-                )
+                f'Available balance for {quote_asset} on {self.name} changed from {round(temp_old_quote_available_asset, 2)} to {round(temp_new_quote_available_asset, 2)}'
             )
         temp_new_base_available_asset = self.available_assets[base_asset]
         if jh.is_debuggable('balance_update') and temp_old_base_available_asset != temp_new_base_available_asset:
             logger.info(
-                'Available balance for {} on {} changed from {} to {}'.format(
-                    base_asset, self.name,
-                    round(temp_old_base_available_asset, 2), round(temp_new_base_available_asset, 2)
-                )
+                f'Available balance for {base_asset} on {self.name} changed from {round(temp_old_base_available_asset, 2)} to {round(temp_new_base_available_asset, 2)}'
             )
 
     def on_order_execution(self, order: Order):
@@ -110,35 +109,23 @@ class SpotExchange(Exchange):
         temp_new_quote_asset = self.assets[quote_asset]
         if jh.is_debuggable('balance_update') and temp_old_quote_asset != temp_new_quote_asset:
             logger.info(
-                'Balance for {} on {} changed from {} to {}'.format(
-                    quote_asset, self.name,
-                    round(temp_old_quote_asset, 2), round(temp_new_quote_asset, 2)
-                )
+                f'Balance for {quote_asset} on {self.name} changed from {round(temp_old_quote_asset, 2)} to { round(temp_new_quote_asset, 2)}'
             )
         temp_new_quote_available_asset = self.available_assets[quote_asset]
         if jh.is_debuggable('balance_update') and temp_old_quote_available_asset != temp_new_quote_available_asset:
             logger.info(
-                'Balance for {} on {} changed from {} to {}'.format(
-                    quote_asset, self.name,
-                    round(temp_old_quote_available_asset, 2), round(temp_new_quote_available_asset, 2)
-                )
+                f'Balance for {quote_asset} on {self.name} changed from {round(temp_old_quote_available_asset, 2)} to {round(temp_new_quote_available_asset, 2)}'
             )
 
         temp_new_base_asset = self.assets[base_asset]
         if jh.is_debuggable('balance_update') and temp_old_base_asset != temp_new_base_asset:
             logger.info(
-                'Balance for {} on {} changed from {} to {}'.format(
-                    base_asset, self.name,
-                    round(temp_old_base_asset, 2), round(temp_new_base_asset, 2)
-                )
+                f'Balance for {base_asset} on {self.name} changed from {round(temp_old_base_asset, 2)} to {round(temp_new_base_asset, 2)}'
             )
         temp_new_base_available_asset = self.available_assets[base_asset]
         if jh.is_debuggable('balance_update') and temp_old_base_available_asset != temp_new_base_available_asset:
             logger.info(
-                'Balance for {} on {} changed from {} to {}'.format(
-                    base_asset, self.name,
-                    round(temp_old_base_available_asset, 2), round(temp_new_base_available_asset, 2)
-                )
+                f'Balance for {base_asset} on {self.name} changed from {round(temp_old_base_available_asset, 2)} to {round(temp_new_base_available_asset, 2)}'
             )
 
     def on_order_cancellation(self, order: Order):
@@ -158,16 +145,10 @@ class SpotExchange(Exchange):
         temp_new_quote_available_asset = self.available_assets[quote_asset]
         if jh.is_debuggable('balance_update') and temp_old_quote_available_asset != temp_new_quote_available_asset:
             logger.info(
-                'Available balance for {} on {} changed from {} to {}'.format(
-                    quote_asset, self.name,
-                    round(temp_old_quote_available_asset, 2), round(temp_new_quote_available_asset, 2)
-                )
+                f'Available balance for {quote_asset} on {self.name} changed from {round(temp_old_quote_available_asset, 2)} to {round(temp_new_quote_available_asset, 2)}'
             )
         temp_new_base_available_asset = self.available_assets[base_asset]
         if jh.is_debuggable('balance_update') and temp_old_base_available_asset != temp_new_base_available_asset:
             logger.info(
-                'Available balance for {} on {} changed from {} to {}'.format(
-                    base_asset, self.name,
-                    round(temp_old_base_available_asset, 2), round(temp_new_base_available_asset, 2)
-                )
+                f'Available balance for {base_asset} on {self.name} changed from {round(temp_old_base_available_asset, 2)} to {round(temp_new_base_available_asset, 2)}'
             )

@@ -80,7 +80,6 @@ def test_dashless_symbol():
     assert jh.dashless_symbol('BTCUSDT') == 'BTCUSDT'
 
 
-
 def test_dashy_symbol():
     assert jh.dashy_symbol('BTCUSD') == 'BTC-USD'
     assert jh.dashy_symbol('BTCUSDT') == 'BTC-USDT'
@@ -315,12 +314,14 @@ def test_now_to_timestamp():
     from jesse.store import store
     assert jh.now_to_timestamp() == store.app.time
 
+
 def test_np_ffill():
-    arr = np.array([0, 1, np.nan,  np.nan])
+    arr = np.array([0, 1, np.nan, np.nan])
     res = jh.np_ffill(arr)
     expected = np.array([0, 1, 1, 1])
 
     np.equal(res, expected)
+
 
 def test_np_shift():
     arr = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
@@ -401,7 +402,7 @@ def test_prepare_qty():
 
 def test_python_version():
     import sys
-    assert jh.python_version() == float('{}.{}'.format(sys.version_info[0], sys.version_info[1]))
+    assert jh.python_version() == float(f'{sys.version_info[0]}.{sys.version_info[1]}')
 
 
 def test_quote_asset():

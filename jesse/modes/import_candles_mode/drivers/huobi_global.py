@@ -18,11 +18,12 @@ class HuobiGlobal(CandleExchange):
         exchange_id = 'huobipro'
         self.exchange_class = getattr(ccxt, exchange_id)({'enableRateLimit': True})
         if not self.exchange_class.has['fetchOHLCV']:
-            raise ValueError("fetchOHLCV not supported by exchange.Y")
-        print(self.exchange_class.timeframes)
+            raise ValueError("fetchOHLCV not supported by exchange.")
+        # print(self.exchange_class.timeframes)
 
     def get_starting_time(self, symbol) -> int:
 
+        # cctx uses / as default
         symbol = symbol.replace("-", "/")
 
         try:
@@ -46,7 +47,7 @@ class HuobiGlobal(CandleExchange):
     def fetch(self, symbol, start_timestamp):
 
         end_timestamp = start_timestamp + (self.count - 1) * 60000
-        # cctx doesn't accept an end timestamp but only a count / limit
+        # cctx doesn't accept an end timestamp but only a count / limit of candles
         limit = (end_timestamp - start_timestamp) / 60000 + 1
 
         try:

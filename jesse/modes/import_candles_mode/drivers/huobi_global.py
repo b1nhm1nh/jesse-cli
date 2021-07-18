@@ -53,11 +53,11 @@ class HuobiGlobal(CandleExchange):
         try:
             data = self.exchange_class.fetch_ohlcv(symbol.replace("-", "/"), '1m', start_timestamp, limit)
         except ccxt.NetworkError as e:
-            raise ValueError(self.exchange_class.id, 'get_starting_time failed due to a network error:', str(e))
+            raise ValueError(self.exchange_class.id, 'fetch failed due to a network error:', str(e))
         except ccxt.ExchangeError as e:
-            raise ValueError(self.exchange_class.id, 'get_starting_time failed due to exchange error:', str(e))
+            raise ValueError(self.exchange_class.id, 'fetch failed due to exchange error:', str(e))
         except Exception as e:
-            raise ValueError(self.exchange_class.id, 'get_starting_time failed with:', str(e))
+            raise ValueError(self.exchange_class.id, 'fetch failed with:', str(e))
 
         candles = []
 

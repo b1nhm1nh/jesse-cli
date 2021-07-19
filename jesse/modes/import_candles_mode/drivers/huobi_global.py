@@ -21,10 +21,12 @@ class HuobiGlobal(CandleExchange):
         # cctx has a built-in rate limiter as alternative self.exchange_class.rateLimit returns the exchanges limit.
         # all properties of the exchange class: https://ccxt.readthedocs.io/en/latest/manual.html#exchange-structure
         self.exchange_class = getattr(ccxt, exchange_id)({'enableRateLimit': True})
+
         if not self.exchange_class.has['fetchOHLCV']:
             raise ValueError("fetchOHLCV not supported by exchange.")
-        # print(self.exchange_class.timeframes)
-        # print(self.exchange_class.rateLimit)
+
+        if not "1m" in self.exchange_class.timeframes.keys():
+            raise ValueError("1m timeframe not supported by exchange.")
 
 
     def get_starting_time(self, symbol) -> int:

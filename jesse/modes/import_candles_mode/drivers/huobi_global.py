@@ -1,4 +1,5 @@
 import ccxt
+import time
 import jesse.helpers as jh
 from jesse.modes.import_candles_mode.drivers.interface import CandleExchange
 
@@ -42,6 +43,8 @@ class HuobiGlobal(CandleExchange):
                     first_timestamp = self.exchange_class.fetch_ohlcv(symbol, timeframe, since=first_timestamp, limit=2)[0][0]
                 if timeframe == "1m":
                     break
+                # make sure to not hit a rate-limit here.
+                time.sleep(0.5)
         except ccxt.NetworkError as e:
             raise ValueError(self.exchange_class.id, 'get_starting_time failed due to a network error:', str(e))
         except ccxt.ExchangeError as e:

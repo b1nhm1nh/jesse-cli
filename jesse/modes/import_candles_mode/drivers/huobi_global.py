@@ -10,6 +10,8 @@ class HuobiGlobal(CandleExchange):
 
         super().__init__(
             name='Huobi Global',
+            # cctx mentions in the docs 1000 is a good value that works across many exchanges.
+            # See here https://ccxt.readthedocs.io/en/latest/manual.html#ohlcv-candlestick-charts
             count=1000,
             rate_limit_per_second=2,
             backup_exchange_class=Binance
@@ -17,14 +19,12 @@ class HuobiGlobal(CandleExchange):
 
         exchange_id = 'huobipro'
         # cctx has a built-in rate limiter as alternative self.exchange_class.rateLimit returns the exchanges limit.
+        # all properties of the exchange class: https://ccxt.readthedocs.io/en/latest/manual.html#exchange-structure
         self.exchange_class = getattr(ccxt, exchange_id)({'enableRateLimit': True})
         if not self.exchange_class.has['fetchOHLCV']:
             raise ValueError("fetchOHLCV not supported by exchange.")
         # print(self.exchange_class.timeframes)
         # print(self.exchange_class.rateLimit)
-
-
-
 
 
     def get_starting_time(self, symbol) -> int:

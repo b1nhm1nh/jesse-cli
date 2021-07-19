@@ -16,10 +16,16 @@ class HuobiGlobal(CandleExchange):
         )
 
         exchange_id = 'huobipro'
+        # cctx has a built-in rate limiter as alternative self.exchange_class.rateLimit returns the exchanges limit.
         self.exchange_class = getattr(ccxt, exchange_id)({'enableRateLimit': True})
         if not self.exchange_class.has['fetchOHLCV']:
             raise ValueError("fetchOHLCV not supported by exchange.")
         # print(self.exchange_class.timeframes)
+        # print(self.exchange_class.rateLimit)
+
+
+
+
 
     def get_starting_time(self, symbol) -> int:
 
@@ -46,12 +52,9 @@ class HuobiGlobal(CandleExchange):
 
     def fetch(self, symbol, start_timestamp):
 
-        end_timestamp = start_timestamp + (self.count - 1) * 60000
         # cctx doesn't accept an end timestamp but only a count / limit of candles
-        limit = (end_timestamp - start_timestamp) / 60000 + 1
-
         try:
-            data = self.exchange_class.fetch_ohlcv(symbol.replace("-", "/"), '1m', start_timestamp, limit)
+            data = self.exchange_class.fetch_ohlcv(symbol.replace("-", "/"), '1m', start_timestamp, self.count - 1)
         except ccxt.NetworkError as e:
             raise ValueError(self.exchange_class.id, 'fetch failed due to a network error:', str(e))
         except ccxt.ExchangeError as e:

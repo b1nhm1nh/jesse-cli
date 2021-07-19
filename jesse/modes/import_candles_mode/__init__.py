@@ -77,7 +77,8 @@ def run(exchange: str, symbol: str, start_date_str: str, skip_confirmation: bool
                 # fetch from market
                 candles = driver.fetch(symbol, temp_start_timestamp)
 
-                if not len(candles):
+                # check if candles have been returned and check those returned start with the right timestamp
+                if not len(candles) or arrow.get(candles[0]['timestamp'] / 1000) > start_date:
                     click.clear()
                     first_existing_timestamp = driver.get_starting_time(symbol)
 

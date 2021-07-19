@@ -15,7 +15,7 @@ class HuobiGlobal(CandleExchange):
             backup_exchange_class=None
         )
 
-        exchange_id = 'binance'
+        exchange_id = 'huobipro'
         # cctx has a built-in rate limiter as alternative self.exchange_class.rateLimit returns the exchanges limit.
         # all properties of the exchange class: https://ccxt.readthedocs.io/en/latest/manual.html#exchange-structure
         self.exchange_class = getattr(ccxt, exchange_id)({'enableRateLimit': True})

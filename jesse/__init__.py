@@ -422,23 +422,23 @@ try:
 except ModuleNotFoundError:
     live_package_exists = False
 if live_package_exists:
-    @cli.command()
-    def collect() -> None:
-        """
-        fetches streamed market data such as tickers, trades, and orderbook from
-        the WS connection and stores them into the database for later research.
-        """
-        validate_cwd()
-
-        # set trading mode
-        from jesse.config import config
-        config['app']['trading_mode'] = 'collect'
-
-        register_custom_exception_handler()
-
-        from jesse_live.live.collect_mode import run
-
-        run()
+    # @cli.command()
+    # def collect() -> None:
+    #     """
+    #     fetches streamed market data such as tickers, trades, and orderbook from
+    #     the WS connection and stores them into the database for later research.
+    #     """
+    #     validate_cwd()
+    #
+    #     # set trading mode
+    #     from jesse.config import config
+    #     config['app']['trading_mode'] = 'collect'
+    #
+    #     register_custom_exception_handler()
+    #
+    #     from jesse_live.live.collect_mode import run
+    #
+    #     run()
 
 
     @cli.command()
@@ -464,6 +464,11 @@ if live_package_exists:
         from jesse_live import init
         from jesse.services.selectors import get_exchange
         live_config = locate('live-config.config')
+
+        # validate that the "live-config.py" file exists
+        if live_config is None:
+            jh.error('You\'re either missing the live-config.py file or haven\'t logged in. Run "jesse login" to fix it.', True)
+            jh.terminate_app()
 
         # inject live config
         init(config, live_config)
@@ -494,6 +499,11 @@ if live_package_exists:
         from jesse_live import init
         from jesse.services.selectors import get_exchange
         live_config = locate('live-config.config')
+
+        # validate that the "live-config.py" file exists
+        if live_config is None:
+            jh.error('You\'re either missing the live-config.py file or haven\'t logged in. Run "jesse login" to fix it.', True)
+            jh.terminate_app()
 
         # inject live config
         init(config, live_config)

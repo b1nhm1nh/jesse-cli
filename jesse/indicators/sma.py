@@ -15,13 +15,17 @@ def sma(candles: np.ndarray, period: int = 5, source_type: str = "close", sequen
     :param candles: np.ndarray
     :param period: int - default: 5
     :param source_type: str - default: "close"
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
-    candles = slice_candles(candles, sequential)
 
-    source = get_candle_source(candles, source_type=source_type)
+    if len(candles.shape) == 1:
+        source = candles
+    else:
+        candles = slice_candles(candles, sequential)
+        source = get_candle_source(candles, source_type=source_type)
+
     res = talib.SMA(source, timeperiod=period)
 
     return res if sequential else res[-1]

@@ -13,13 +13,16 @@ def mean_ad(candles: np.ndarray, period: int = 5, source_type: str = "hl2", sequ
     :param candles: np.ndarray
     :param period: int - default: 5
     :param source_type: str - default: "hl2"
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
-    candles = slice_candles(candles, sequential)
+    if len(candles.shape) == 1:
+      source = candles
+    else:
+      candles = slice_candles(candles, sequential)
+      source = get_candle_source(candles, source_type=source_type)
 
-    source = get_candle_source(candles, source_type=source_type)
     swv = sliding_window_view(source, window_shape=period)
     abs_diff = np.absolute(source - same_length(source, np.mean(swv, -1)))
     smv_abs_diff = sliding_window_view(abs_diff, window_shape=period)

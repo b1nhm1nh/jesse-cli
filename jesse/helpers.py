@@ -103,10 +103,6 @@ def dashless_symbol(symbol: str) -> str:
     return symbol.replace("-", "")
 
 
-def dashy_symbol(symbol: str) -> str:
-    return f"{symbol[0:3]}-{symbol[3:]}"
-
-
 def date_diff_in_days(date1: arrow.arrow.Arrow, date2: arrow.arrow.Arrow) -> int:
     if type(date1) is not arrow.arrow.Arrow or type(
             date2) is not arrow.arrow.Arrow:
@@ -260,8 +256,8 @@ def get_config(keys: str, default: Any = None) -> Any:
         raise ValueError('keys string cannot be empty')
 
     if is_unit_testing() or not keys in CACHED_CONFIG:
-        if os.environ.get(keys.upper().replace(".", "_")) is not None:
-            CACHED_CONFIG[keys] = os.environ.get(keys.upper().replace(".", "_"))
+        if os.environ.get(keys.upper().replace(".", "_").replace(" ", "_")) is not None:
+            CACHED_CONFIG[keys] = os.environ.get(keys.upper().replace(".", "_").replace(" ", "_"))
         else:
             from functools import reduce
             from jesse.config import config
@@ -344,7 +340,9 @@ def is_test_driving() -> bool:
 
 
 def is_unit_testing() -> bool:
-    return "pytest" in sys.modules
+    from jesse.config import config
+    # config['app']['is_unit_testing'] is only set in the live plugin unit tests
+    return "pytest" in sys.modules or config['app']['is_unit_testing']
 
 
 def is_valid_uuid(uuid_to_test, version: int = 4) -> bool:
@@ -408,6 +406,9 @@ def normalize(x: float, x_min: float, x_max: float) -> float:
 
 
 def now() -> int:
+    """
+    Always returns the current time in milliseconds but rounds time in matter of seconds
+    """
     return now_to_timestamp()
 
 
@@ -450,9 +451,10 @@ def opposite_side(s: str) -> str:
 
     if s == sides.BUY:
         return sides.SELL
-    if s == sides.SELL:
+    elif s == sides.SELL:
         return sides.BUY
-    raise ValueError('unsupported side')
+    else:
+        raise ValueError(f'{s} is not a valid input for side')
 
 
 def opposite_type(t: str) -> str:
@@ -516,11 +518,10 @@ def orderbook_trim_price(p: float, ascending: bool, unit: float) -> float:
 def prepare_qty(qty: float, side: str) -> float:
     if side.lower() in ('sell', 'short'):
         return -abs(qty)
-
-    if side.lower() in ('buy', 'long'):
+    elif side.lower() in ('buy', 'long'):
         return abs(qty)
-
-    raise TypeError()
+    else:
+        raise ValueError(f'{side} is not a valid input')
 
 
 def python_version() -> float:
@@ -565,49 +566,48 @@ def relative_to_absolute(path: str) -> str:
     return os.path.abspath(path)
 
 
-def round_price_for_live_mode(price: float, roundable_price: float) -> Union[float, np.ndarray]:
+def round_price_for_live_mode(price, precision: int) -> Union[float, np.ndarray]:
     """
     Rounds price(s) based on exchange requirements
 
     :param price: float
-    :param roundable_price: float
+    :param precision: int
     :return: float | nd.array
     """
-    n = int(math.log10(price))
-
-    if price < 1:
-        price_round_precision = abs(n - 4)
-    else:
-        price_round_precision = 3 - n
-        if price_round_precision < 0:
-            price_round_precision = 0
-
-    return np.round(roundable_price, price_round_precision)
+    return np.round(price, precision)
 
 
-def round_qty_for_live_mode(price: float, roundable_qty: float) -> Union[float, np.ndarray]:
+def round_qty_for_live_mode(roundable_qty: float, precision: int) -> Union[float, np.ndarray]:
     """
     Rounds qty(s) based on exchange requirements
 
-    :param price: float
     :param roundable_qty: float | nd.array
+    :param precision: int
     :return: float | nd.array
     """
-    n = int(math.log10(price))
-
-    if price < 1:
-        qty_round_precision = 0
-    else:
-        qty_round_precision = n + 1
-        if qty_round_precision > 3:
-            qty_round_precision = 3
-    rounded = np.round(roundable_qty, qty_round_precision)
+    # for qty rounding down is important to prevent InsufficenMargin
+    rounded = round_decimals_down(roundable_qty, precision)
 
     for index, q in enumerate(rounded):
         if q == 0.0:
-            rounded[index] = 0.001
+            rounded[index] = 1 / 10 ** precision
 
     return rounded
+
+
+def round_decimals_down(number: np.ndarray, decimals: int = 2) -> float:
+    """
+    Returns a value rounded down to a specific number of decimal places.
+    """
+    if not isinstance(decimals, int):
+      raise TypeError("decimal places must be an integer")
+    elif decimals < 0:
+      raise ValueError("decimal places has to be 0 or more")
+    elif decimals == 0:
+      return np.floor(number)
+
+    factor = 10 ** decimals
+    return np.floor(number * factor) / factor
 
 
 def same_length(bigger: np.ndarray, shorter: np.ndarray) -> np.ndarray:
@@ -641,7 +641,7 @@ def string_after_character(string: str, character: str) -> str:
 
 def slice_candles(candles: np.ndarray, sequential: bool) -> np.ndarray:
     warmup_candles_num = get_config('env.data.warmup_candles_num', 240)
-    if not sequential and len(candles) > warmup_candles_num:
+    if not sequential and candles.shape[0] > warmup_candles_num:
         candles = candles[-warmup_candles_num:]
     return candles
 
@@ -673,8 +673,12 @@ def error(msg: str, force_print: bool = False) -> None:
         from jesse.services import logger
         logger.error(msg)
         if force_print:
+            print('\n')
+            print(color('========== critical error =========='.upper(), 'red'))
             print(color(msg, 'red'))
     else:
+        print('\n')
+        print(color('========== critical error =========='.upper(), 'red'))
         print(color(msg, 'red'))
 
 
@@ -749,3 +753,12 @@ def unique_list(arr) -> list:
     seen = set()
     seen_add = seen.add
     return [x for x in arr if not (x in seen or seen_add(x))]
+
+
+def closing_side(position_type: str) -> str:
+    if position_type.lower() == 'long':
+        return 'sell'
+    elif position_type.lower() == 'short':
+        return 'buy'
+    else:
+        raise ValueError(f'Value entered for position_type ({position_type}) is not valid')

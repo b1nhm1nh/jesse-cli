@@ -1,7 +1,10 @@
 from typing import Union
 
 import numpy as np
-from numba import njit
+try:
+    from numba import njit
+except ImportError:
+    njit = lambda a : a
 
 from jesse.helpers import get_candle_source, slice_candles
 
@@ -13,7 +16,7 @@ def rsx(candles: np.ndarray, period: int = 14, source_type: str = "close", seque
    
     :param candles: np.ndarray
     :param period: int - default: 14
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
@@ -60,7 +63,7 @@ def rsx_fast(source, period):
 
     res = np.full_like(source, np.nan)
 
-    for i in range(period, len(source)):
+    for i in range(period, source.size):
         if f90 == 0:
             f90 = 1.0
             f0 = 0.0

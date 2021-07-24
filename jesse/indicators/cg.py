@@ -1,7 +1,10 @@
 from typing import Union
 
 import numpy as np
-from numba import njit
+try:
+    from numba import njit
+except ImportError:
+    njit = lambda a : a
 
 from jesse.helpers import get_candle_source, same_length, slice_candles
 
@@ -14,7 +17,7 @@ def cg(candles: np.ndarray, period: int = 10, source_type: str = "close", sequen
     :param candles: np.ndarray
     :param period: int - default: 10
     :param source_type: str - default: "close"
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
@@ -29,7 +32,7 @@ def cg(candles: np.ndarray, period: int = 10, source_type: str = "close", sequen
 @njit
 def go_fast(source, period):  # Function is compiled to machine code when called the first time
     res = np.full_like(source, fill_value=np.nan)
-    for i in range(0, len(source)):
+    for i in range(0, source.size):
         if i > period:
             num = 0
             denom = 0

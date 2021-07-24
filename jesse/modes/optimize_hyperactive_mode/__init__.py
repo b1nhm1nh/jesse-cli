@@ -37,6 +37,7 @@ class Optimizer():
     self.timeframe = router.routes[0].timeframe
     StrategyClass = jh.get_strategy_class(self.strategy_name)
     self.strategy_hp = StrategyClass.hyperparameters(None)
+    self.hyperparameters_rules = StrategyClass.hyperparameters_rules(None)
     self.solution_len = len(self.strategy_hp)
     self.optimizer = optimizer
     self.iterations = iterations
@@ -75,55 +76,52 @@ class Optimizer():
     os.makedirs('./storage/optimize/csv', exist_ok=True)
 
   def objective_function(self, hp: str):
-
-    # init candle store
-    store.candles.init_storage(5000)
-    # inject required TRAINING candles to the candle store
-
-    for num, c in enumerate(config['app']['considering_candles']):
-      required_candles.inject_required_candles_to_store(
-        self.training_initial_candles[num],
-        c[0],
-        c[1]
-      )
-
+    score = np.nan
     try:
-      # run backtest simulation
-      simulator(self.training_candles, hp)
+      if len(self.hyperparameters_rules) == 0 or jh.hp_rules_valid(hp, self.hyperparameters_rules):
+        # init candle store
+        store.candles.init_storage(5000)
+        # inject required TRAINING candles to the candle store
 
-      if store.completed_trades.count > 5:
-        training_data = stats.trades(store.completed_trades.trades, store.app.daily_balance)
-        total_effect_rate = log10(training_data['total']) / log10(self.optimal_total)
-        if total_effect_rate > 1:
-          total_effect_rate = 1
+        for num, c in enumerate(config['app']['considering_candles']):
+          required_candles.inject_required_candles_to_store(
+            self.training_initial_candles[num],
+            c[0],
+            c[1]
+          )
 
-        ratio_config = jh.get_config('env.optimization.ratio', 'sharpe')
-        if ratio_config == 'sharpe':
-          ratio = training_data['sharpe_ratio']
-          ratio_normalized = jh.normalize(ratio, -.5, 5)
-        elif ratio_config == 'calmar':
-          ratio = training_data['calmar_ratio']
-          ratio_normalized = jh.normalize(ratio, -.5, 30)
-        elif ratio_config == 'sortiono':
-          ratio = training_data['sortino_ratio']
-          ratio_normalized = jh.normalize(ratio, -.5, 15)
-        elif ratio_config == 'omega':
-          ratio = training_data['omega_ratio']
-          ratio_normalized = jh.normalize(ratio, -.5, 5)
-        else:
-          raise ValueError(
-            'The entered ratio configuration `{}` for the optimization is unknown. Choose between sharpe, calmar, sortino and omega.'.format(
-              ratio_config))
+        # run backtest simulation
+        simulator(self.training_candles, hp)
 
-        if ratio < 0:
-          score = np.nan
-        else:
-          score = total_effect_rate * ratio_normalized
-      else:
-        score = np.nan
+        if store.completed_trades.count > 5:
+          training_data = stats.trades(store.completed_trades.trades, store.app.daily_balance)
+          total_effect_rate = log10(training_data['total']) / log10(self.optimal_total)
+          if total_effect_rate > 1:
+            total_effect_rate = 1
+
+          ratio_config = jh.get_config('env.optimization.ratio', 'sharpe')
+          if ratio_config == 'sharpe':
+            ratio = training_data['sharpe_ratio']
+            ratio_normalized = jh.normalize(ratio, -.5, 5)
+          elif ratio_config == 'calmar':
+            ratio = training_data['calmar_ratio']
+            ratio_normalized = jh.normalize(ratio, -.5, 30)
+          elif ratio_config == 'sortino':
+            ratio = training_data['sortino_ratio']
+            ratio_normalized = jh.normalize(ratio, -.5, 15)
+          elif ratio_config == 'omega':
+            ratio = training_data['omega_ratio']
+            ratio_normalized = jh.normalize(ratio, -.5, 5)
+          else:
+            raise ValueError(
+              'The entered ratio configuration `{}` for the optimization is unknown. Choose between sharpe, calmar, sortino and omega.'.format(
+                ratio_config))
+
+          if not ratio <= 0:
+            score = total_effect_rate * ratio_normalized
+
     except Exception as e:
       logger.error("".join(traceback.TracebackException.from_exception(e).format()))
-      score = np.nan
     finally:
 
       # you can access the entire dictionary from "para"

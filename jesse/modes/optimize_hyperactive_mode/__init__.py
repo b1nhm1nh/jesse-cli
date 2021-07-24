@@ -89,36 +89,34 @@ class Optimizer():
             c[0],
             c[1]
           )
-
         # run backtest simulation
         simulator(self.training_candles, hp)
 
-        if store.completed_trades.count > 5:
-          training_data = stats.trades(store.completed_trades.trades, store.app.daily_balance)
-          total_effect_rate = log10(training_data['total']) / log10(self.optimal_total)
-          if total_effect_rate > 1:
-            total_effect_rate = 1
+        training_data = stats.trades(store.completed_trades.trades, store.app.daily_balance)
+        total_effect_rate = log10(training_data['total']) / log10(self.optimal_total)
+        if total_effect_rate > 1:
+          total_effect_rate = 1
 
-          ratio_config = jh.get_config('env.optimization.ratio', 'sharpe')
-          if ratio_config == 'sharpe':
-            ratio = training_data['sharpe_ratio']
-            ratio_normalized = jh.normalize(ratio, -.5, 5)
-          elif ratio_config == 'calmar':
-            ratio = training_data['calmar_ratio']
-            ratio_normalized = jh.normalize(ratio, -.5, 30)
-          elif ratio_config == 'sortino':
-            ratio = training_data['sortino_ratio']
-            ratio_normalized = jh.normalize(ratio, -.5, 15)
-          elif ratio_config == 'omega':
-            ratio = training_data['omega_ratio']
-            ratio_normalized = jh.normalize(ratio, -.5, 5)
-          else:
-            raise ValueError(
-              'The entered ratio configuration `{}` for the optimization is unknown. Choose between sharpe, calmar, sortino and omega.'.format(
-                ratio_config))
+        ratio_config = jh.get_config('env.optimization.ratio', 'sharpe')
+        if ratio_config == 'sharpe':
+          ratio = training_data['sharpe_ratio']
+          ratio_normalized = jh.normalize(ratio, -.5, 5)
+        elif ratio_config == 'calmar':
+          ratio = training_data['calmar_ratio']
+          ratio_normalized = jh.normalize(ratio, -.5, 30)
+        elif ratio_config == 'sortino':
+          ratio = training_data['sortino_ratio']
+          ratio_normalized = jh.normalize(ratio, -.5, 15)
+        elif ratio_config == 'omega':
+          ratio = training_data['omega_ratio']
+          ratio_normalized = jh.normalize(ratio, -.5, 5)
+        else:
+          raise ValueError(
+            'The entered ratio configuration `{}` for the optimization is unknown. Choose between sharpe, calmar, sortino and omega.'.format(
+              ratio_config))
 
-          if not ratio <= 0:
-            score = total_effect_rate * ratio_normalized
+        if not ratio <= 0:
+          score = total_effect_rate * ratio_normalized
 
     except Exception as e:
       logger.error("".join(traceback.TracebackException.from_exception(e).format()))

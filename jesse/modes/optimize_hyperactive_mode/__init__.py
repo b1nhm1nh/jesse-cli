@@ -94,9 +94,7 @@ class Optimizer():
 
         training_data = stats.trades(store.completed_trades.trades, store.app.daily_balance)
         total_effect_rate = log10(training_data['total']) / log10(self.optimal_total)
-        if total_effect_rate > 1:
-          total_effect_rate = 1
-
+        total_effect_rate = min(total_effect_rate, 1)
         ratio_config = jh.get_config('env.optimization.ratio', 'sharpe')
         if ratio_config == 'sharpe':
           ratio = training_data['sharpe_ratio']
@@ -115,7 +113,7 @@ class Optimizer():
             'The entered ratio configuration `{}` for the optimization is unknown. Choose between sharpe, calmar, sortino and omega.'.format(
               ratio_config))
 
-        if not ratio <= 0:
+        if ratio > 0:
           score = total_effect_rate * ratio_normalized
 
     except Exception as e:
@@ -149,11 +147,11 @@ class Optimizer():
     hp = {}
     for st_hp in self.strategy_hp:
       if st_hp['type'] is int:
-        if not 'step' in st_hp:
+        if 'step' not in st_hp:
           st_hp['step'] = 1
         hp[st_hp['name']] = list(range(st_hp['min'], st_hp['max'] + st_hp['step'], st_hp['step']))
       elif st_hp['type'] is float:
-        if not 'step' in st_hp:
+        if 'step' not in st_hp:
           st_hp['step'] = 0.1
         decs = str(st_hp['step'])[::-1].find('.')
         hp[st_hp['name']] = list(
@@ -181,10 +179,12 @@ class Optimizer():
     if jh.file_exists(self.path):
       with open(self.path, "r") as f:
         mem = pd.read_csv(f, sep=";", na_values='nan')
-      if not mem.empty:
-        if not click.confirm('Previous optimization results for {} exists. Continue?'.format(self.study_name),
-                             default=True):
-          mem = None
+      if not mem.empty and not click.confirm(
+          'Previous optimization results for {} exists. Continue?'.format(
+              self.study_name),
+          default=True,
+      ):
+        mem = None
 
     if self.optimizer == "RandomSearchOptimizer":
       optimizer = hyperactive.RandomSearchOptimizer()
@@ -322,9 +322,7 @@ def optimize_mode_hyperactive(start_date: str, finish_date: str, optimal_total: 
 def get_training_candles(start_date_str: str, finish_date_str: str):
   # Load candles (first try cache, then database)
   from jesse.modes.backtest_mode import load_candles
-  training_candles = load_candles(start_date_str, finish_date_str)
-
-  return training_candles
+  return load_candles(start_date_str, finish_date_str)
 
 
 def from_np_array(array_string):

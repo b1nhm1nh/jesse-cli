@@ -1,7 +1,10 @@
 from typing import Union
 
 import numpy as np
-from numba import njit
+try:
+    from numba import njit
+except ImportError:
+    njit = lambda a : a
 
 from jesse.helpers import get_candle_source, slice_candles
 from .supersmoother import supersmoother_fast
@@ -13,16 +16,19 @@ def trendflex(candles: np.ndarray, period: int = 20, source_type: str = "close",
     Trendflex indicator by John F. Ehlers
 
     :param candles: np.ndarray
-    :param period: int - default=20
+    :param period: int - default: 20
     :param source_type: str - default: "close"
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
 
-    candles = slice_candles(candles, sequential)
+    if len(candles.shape) == 1:
+        source = candles
+    else:
+        candles = slice_candles(candles, sequential)
+        source = get_candle_source(candles, source_type=source_type)
 
-    source = get_candle_source(candles, source_type=source_type)
 
     ssf = supersmoother_fast(source, period / 2)
 
@@ -41,11 +47,11 @@ def trendflex_fast(ssf, period):
     sums = np.full_like(ssf, 0)
 
     for i in range(ssf.shape[0]):
-        if not (i < period):
+        if i >= period:
             sum = 0
             for t in range(1, period + 1):
                 sum = sum + ssf[i] - ssf[i - t]
-            sum = sum / period
+            sum /= period
             sums[i] = sum
 
             ms[i] = 0.04 * sums[i] * sums[i] + 0.96 * ms[i - 1]

@@ -4,7 +4,6 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from talib import MA
 
 import jesse.helpers as jh
 from jesse.enums import timeframes
@@ -67,15 +66,10 @@ def crossed(series1: np.ndarray, series2: Union[float, int, np.ndarray], directi
             cross_below = np.logical_and(series1 < series2, series1_shifted >= series2_shifted)
 
         if direction is None:
-            cross_any = np.logical_or(cross_above, cross_below)
-            return cross_any
+            return np.logical_or(cross_above, cross_below)
 
-        if direction == "above":
-            return cross_above
-        else:
-            return cross_below
     else:
-        if not type(series2) is np.ndarray:
+        if type(series2) is not np.ndarray:
             series2 = np.array([series2, series2])
 
         if direction is None or direction == "above":
@@ -86,10 +80,10 @@ def crossed(series1: np.ndarray, series2: Union[float, int, np.ndarray], directi
         if direction is None:
             return cross_above or cross_below
 
-        if direction == "above":
-            return cross_above
-        else:
-            return cross_below
+    if direction == "above":
+        return cross_above
+    else:
+        return cross_below
 
 
 def estimate_risk(entry_price: float, stop_price: float) -> float:
@@ -127,17 +121,6 @@ def numpy_candles_to_dataframe(candles: np.ndarray, name_date: str = "date", nam
                                name_high: str = "high",
                                name_low: str = "low", name_close: str = "close",
                                name_volume: str = "volume") -> pd.DataFrame:
-    """
-
-    :param candles:
-    :param name_date:
-    :param name_open:
-    :param name_high:
-    :param name_low:
-    :param name_close:
-    :param name_volume:
-    :return:
-    """
     columns = [name_date, name_open, name_close, name_high, name_low, name_volume]
     df = pd.DataFrame(data=candles, index=pd.to_datetime(candles[:, 0], unit="ms"), columns=columns)
     df[name_date] = pd.to_datetime(df.index, unit="ms")
@@ -159,7 +142,7 @@ def qty_to_size(qty: float, price: float) -> float:
     return qty * price
 
 
-def risk_to_qty(capital: float, risk_per_capital: float, entry_price: float, stop_loss_price: float,
+def risk_to_qty(capital: float, risk_per_capital: float, entry_price: float, stop_loss_price: float, precision: int = 8,
                 fee_rate: float = 0) -> float:
     """
     a risk management tool to quickly get the qty based on risk percentage
@@ -177,7 +160,7 @@ def risk_to_qty(capital: float, risk_per_capital: float, entry_price: float, sto
     if fee_rate != 0:
         size = size * (1 - fee_rate * 3)
 
-    return size_to_qty(size, entry_price, fee_rate=fee_rate)
+    return size_to_qty(size, entry_price, precision=precision, fee_rate=fee_rate)
 
 
 def risk_to_size(capital_size: float, risk_percentage: float, risk_per_qty: float, entry_price: float) -> float:
@@ -202,8 +185,7 @@ def risk_to_size(capital_size: float, risk_percentage: float, risk_per_qty: floa
 def size_to_qty(position_size: float, entry_price: float, precision: int = 3, fee_rate: float = 0) -> float:
     """
     converts position-size to quantity
-    example: requesting $100 at the entry_price of %50 would return 2
-
+    example: requesting $100 at the entry_price of $50 would return 2
     :param position_size: float
     :param entry_price: float
     :param precision: int
@@ -214,7 +196,7 @@ def size_to_qty(position_size: float, entry_price: float, precision: int = 3, fe
         raise TypeError()
 
     if fee_rate != 0:
-        position_size = position_size * (1 - fee_rate * 3)
+        position_size *= 1 - fee_rate * 3
 
     return jh.floor_with_precision(position_size / entry_price, precision)
 
@@ -263,16 +245,46 @@ def streaks(series: np.ndarray, use_diff=True) -> np.ndarray:
     streak = np.where(series >= 0, pos - np.maximum.accumulate(np.where(series <= 0, pos, 0)),
                       -neg + np.maximum.accumulate(np.where(series >= 0, neg, 0)))
 
-    res = np.concatenate((np.full((series.shape[0] - streak.shape[0]), np.nan), streak))
-    return res
+    return np.concatenate(
+        (np.full((series.shape[0] - streak.shape[0]), np.nan), streak)
+    )
 
 
 def signal_line(series: np.ndarray, period: int = 10, matype: int = 0) -> np.ndarray:
-    return MA(series, timeperiod=period, matype=matype)
+    from jesse.indicators.ma import ma
+    return ma(series, period=period, matype=matype, sequential=True)
 
 
 def kelly_criterion(win_rate: float, ratio_avg_win_loss: float) -> float:
     return win_rate - ((1 - win_rate) / ratio_avg_win_loss)
+
+
+def prices_to_returns(price_series: np.ndarray) -> np.ndarray:
+    """
+    converts a series of asset prices to returns.
+    """
+    pct = np.diff(price_series) / price_series[:-1] * 100
+    return jh.same_length(price_series, pct)
+
+
+def z_score(series: np.ndarray) -> np.ndarray:
+    """
+    A Z-score is a numerical measurement that describes a value's relationship to the mean of a group of values. Z-score is measured in terms of standard deviations from the mean
+    """
+    return (series - np.mean(series)) / np.std(series)
+
+
+def are_cointegrated(price_returns_1: np.ndarray, price_returns_2: np.ndarray, cutoff=0.05) -> bool:
+    """
+    Uses unit-root test on residuals to test for cointegrated relationship
+    See Hamilton (1994) 19.2 for more details
+    H_0 is that there is no cointegration i.e. that the residuals have are unit root series (non-stationary)
+    We must observe significant p-value to convince ourselves that the series are cointegrated
+    """
+    from statsmodels.tsa.stattools import coint
+
+    p_value = coint(price_returns_1, price_returns_2)[1]
+    return p_value < cutoff
 
 
 def dd(msg: str) -> None:
@@ -284,3 +296,21 @@ def dd(msg: str) -> None:
     """
     print(msg)
     jh.terminate_app()
+
+
+def candlestick_chart(candles: np.ndarray):
+    """
+    Displays a candlestick chart from the numpy array
+    """
+    import mplfinance as mpf
+    df = numpy_candles_to_dataframe(candles)
+    mpf.plot(df, type='candle')
+
+def combinations_without_repeat(a: np.ndarray, n: int = 2) -> np.ndarray:
+    """
+    Creates an array containing all combinations of the passed arrays individual values without repetitions. Useful for the optimization mode.
+    """
+    from itertools import permutations
+    if n <= 1:
+        raise ValueError("n must be >= 2")
+    return np.array(list(permutations(a, n)))

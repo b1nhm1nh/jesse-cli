@@ -2,17 +2,22 @@ import requests
 
 import jesse.helpers as jh
 from jesse import exceptions
-from .interface import CandleExchange
+from jesse.modes.import_candles_mode.drivers.interface import CandleExchange
 
 
 class TestnetBinanceFutures(CandleExchange):
     def __init__(self) -> None:
-        super().__init__('Testnet Binance Futures', 1000, 0.5)
-        self.endpoint = 'https://testnet.binancefuture.com/fapi/v1/klines'
+        # import here instead of the top of the file to prevent possible the circular imports issue
+        from jesse.modes.import_candles_mode.drivers.binance import Binance
 
-    def init_backup_exchange(self):
-        from .binance import Binance
-        self.backup_exchange = Binance()
+        super().__init__(
+            name='Testnet Binance Futures',
+            count=1000,
+            rate_limit_per_second=2,
+            backup_exchange_class=Binance
+        )
+
+        self.endpoint = 'https://testnet.binancefuture.com/fapi/v1/klines'
 
     def get_starting_time(self, symbol):
         dashless_symbol = jh.dashless_symbol(symbol)
@@ -37,10 +42,11 @@ class TestnetBinanceFutures(CandleExchange):
             raise Exception(response.content)
 
         data = response.json()
-        first_timestamp = int(data[0][0])
-        second_timestamp = first_timestamp + 60_000 * 1440
 
-        return second_timestamp
+        # since the first timestamp doesn't include all the 1m
+        # candles, let's start since the second day then
+        first_timestamp = int(data[0][0])
+        return first_timestamp + 60_000 * 1440
 
     def fetch(self, symbol, start_timestamp):
         end_timestamp = start_timestamp + (self.count - 1) * 60000
@@ -69,10 +75,7 @@ class TestnetBinanceFutures(CandleExchange):
             return
 
         data = response.json()
-        candles = []
-
-        for d in data:
-            candles.append({
+        return [{
                 'id': jh.generate_unique_id(),
                 'symbol': symbol,
                 'exchange': self.name,
@@ -82,6 +85,4 @@ class TestnetBinanceFutures(CandleExchange):
                 'high': float(d[2]),
                 'low': float(d[3]),
                 'volume': float(d[5])
-            })
-
-        return candles
+            } for d in data]

@@ -2,7 +2,10 @@ from collections import namedtuple
 
 import numpy as np
 import talib
-from numba import njit
+try:
+    from numba import njit
+except ImportError:
+    njit = lambda a : a
 
 from jesse.helpers import slice_candles
 
@@ -14,10 +17,10 @@ def emd(candles: np.ndarray, period: int = 20, delta=0.5, fraction=0.1, sequenti
     Empirical Mode Decomposition by John F. Ehlers and Ric Way
 
     :param candles: np.ndarray
-    :param period: int - default=20
-    :param delta: float - default=0.5
-    :param fraction: float - default=0.1
-    :param sequential: bool - default=False
+    :param period: int - default: 20
+    :param delta: float - default: 0.5
+    :param fraction: float - default: 0.1
+    :param sequential: bool - default: False
 
     :return: EMD(upperband, middleband, lowerband)
     """

@@ -1,7 +1,10 @@
 from typing import Union
 
 import numpy as np
-from numba import njit
+try:
+    from numba import njit
+except ImportError:
+    njit = lambda a : a
 
 from jesse.helpers import get_candle_source, slice_candles
 
@@ -12,17 +15,20 @@ def gauss(candles: np.ndarray, period: int = 14, poles: int = 4, source_type: st
     Gaussian Filter
 
     :param candles: np.ndarray
-    :param period: int - default=14
-    :param poles: int - default=4
+    :param period: int - default: 14
+    :param poles: int - default: 4
     :param source_type: str - default: "close"
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
 
-    candles = slice_candles(candles, sequential)
+    if len(candles.shape) == 1:
+        source = candles
+    else:
+        candles = slice_candles(candles, sequential)
+        source = get_candle_source(candles, source_type=source_type)
 
-    source = get_candle_source(candles, source_type=source_type)
     fil, to_fill = gauss_fast(source, period, poles)
 
     if to_fill != 0:
@@ -35,14 +41,14 @@ def gauss(candles: np.ndarray, period: int = 14, poles: int = 4, source_type: st
 
 @njit
 def gauss_fast(source, period, poles):
-    N = len(source)
+    N = source.size
     source = source[~np.isnan(source)]
-    to_fill = N - len(source)
+    to_fill = N - source.size
     PI = np.pi
     beta = (1 - np.cos(2 * PI / period)) / (np.power(2, 1 / poles) - 1)
     alpha = -beta + np.sqrt(np.power(beta, 2) + 2 * beta)
 
-    fil = np.zeros(poles + len(source))
+    fil = np.zeros(poles + source.size)
     if poles == 1:
         coeff = np.array([alpha, (1 - alpha)])
     elif poles == 2:
@@ -52,7 +58,7 @@ def gauss_fast(source, period, poles):
     elif poles == 4:
         coeff = np.array([alpha ** 4, 4 * (1 - alpha), -6 * (1 - alpha) ** 2, 4 * (1 - alpha) ** 3, -(1 - alpha) ** 4])
 
-    for i in range(len(source)):
+    for i in range(source.size):
         if poles == 1:
             val = np.array([source[i].item(), fil[i]])
         elif poles == 2:

@@ -1,7 +1,7 @@
 from collections import namedtuple
 
 import numpy as np
-import talib
+from jesse.indicators.ma import ma
 
 from jesse.helpers import get_candle_source, slice_candles
 
@@ -17,7 +17,7 @@ def eri(candles: np.ndarray, period: int = 13, matype: int = 1, source_type: str
     :param period: int - default: 13
     :param matype: int - default: 1
     :param source_type: str - default: "close"
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
@@ -25,7 +25,7 @@ def eri(candles: np.ndarray, period: int = 13, matype: int = 1, source_type: str
 
     source = get_candle_source(candles, source_type=source_type)
 
-    ema = talib.MA(source, timeperiod=period, matype=matype)
+    ema = ma(source, period=period, matype=matype, sequential=True)
     bull = candles[:, 3] - ema
     bear = candles[:, 4] - ema
 

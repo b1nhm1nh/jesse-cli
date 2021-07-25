@@ -13,10 +13,10 @@ def kaufmanstop(candles: np.ndarray, period: int = 22, mult: float = 2, directio
     Perry Kaufman's Stops
 
     :param candles: np.ndarray
-    :param period: int - default=22
-    :param mult: float - default=2
-    :param direction: str - default=long
-    :param sequential: bool - default=False
+    :param period: int - default: 22
+    :param mult: float - default: 2
+    :param direction: str - default: long
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
@@ -27,9 +27,5 @@ def kaufmanstop(candles: np.ndarray, period: int = 22, mult: float = 2, directio
 
     hl_diff = talib.SMA(high - low, period)
 
-    if direction == "long":
-        res = hl_diff * mult - low
-    else:
-        res = hl_diff * mult + high
-
+    res = hl_diff * mult - low if direction == "long" else hl_diff * mult + high
     return res if sequential else res[-1]

@@ -13,7 +13,7 @@ from jesse.routes import router
 from jesse.store import store
 
 
-def portfolio_vs_asset_returns() -> None:
+def portfolio_vs_asset_returns(study_name: str) -> None:
     register_matplotlib_converters()
     trades = store.completed_trades.trades
     # create a plot figure
@@ -25,7 +25,7 @@ def portfolio_vs_asset_returns() -> None:
     date_list = [start_date + timedelta(days=x) for x in range(len(store.app.daily_balance))]
     plt.xlabel('date')
     plt.ylabel('balance')
-    plt.title('Portfolio Daily Return')
+    plt.title(f'Portfolio Daily Return - {study_name}')
     plt.plot(date_list, store.app.daily_balance)
 
     # price change%
@@ -75,25 +75,40 @@ def portfolio_vs_asset_returns() -> None:
             continue
 
         if t.type == 'long':
+            #Buy
+            # add price change%
+            buy_y.append(
+                price_dict[key]['prices'][price_dict[key]['indexes'][str(int(t.opened_at))]]
+            )
+            # add datetime
             buy_x.append(datetime.fromtimestamp(t.opened_at / 1000))
-            sell_x.append(datetime.fromtimestamp(t.closed_at / 1000))
-            # add price change%
-            buy_y.append(
-                price_dict[key]['prices'][price_dict[key]['indexes'][str(int(t.opened_at))]]
-            )
-            sell_y.append(
-                price_dict[key]['prices'][price_dict[key]['indexes'][str(int(t.closed_at))]]
-            )
+
+            #Sell
+            if str(int(t.closed_at)) in price_dict[key]['indexes']:   #only generate data point if this trade wasn't after the last candle (open position at end)
+                # add price change%
+                sell_y.append(
+                    price_dict[key]['prices'][price_dict[key]['indexes'][str(int(t.closed_at))]]
+                )
+                # add datetime
+                sell_x.append(datetime.fromtimestamp(t.closed_at / 1000))
+
         elif t.type == 'short':
-            buy_x.append(datetime.fromtimestamp(t.closed_at / 1000))
-            sell_x.append(datetime.fromtimestamp(t.opened_at / 1000))
+            #Buy
+            if str(int(t.closed_at)) in price_dict[key]['indexes']:   #only generate data point if this trade wasn't after the last candle (open position at end)
+                # add price change%
+                buy_y.append(
+                    price_dict[key]['prices'][price_dict[key]['indexes'][str(int(t.closed_at))]]
+                )
+                # add datetime
+                buy_x.append(datetime.fromtimestamp(t.closed_at / 1000))
+
+            #Sell
             # add price change%
-            buy_y.append(
-                price_dict[key]['prices'][price_dict[key]['indexes'][str(int(t.closed_at))]]
-            )
             sell_y.append(
                 price_dict[key]['prices'][price_dict[key]['indexes'][str(int(t.opened_at))]]
             )
+            # add datetime
+            sell_x.append(datetime.fromtimestamp(t.opened_at / 1000))
 
     plt.plot(buy_x, np.array(buy_y) * 0.99, '^', color='blue', markersize=7)
     plt.plot(sell_x, np.array(sell_y) * 1.01, 'v', color='red', markersize=7)
@@ -111,10 +126,10 @@ def portfolio_vs_asset_returns() -> None:
         mode = 'LT'
     if mode == 'papertrade':
         mode = 'PT'
-
+    now = str(arrow.utcnow())[0:19]
     # make sure directories exist
     os.makedirs('./storage/charts', exist_ok=True)
-    file_path = f'storage/charts/{mode}-{str(arrow.utcnow())[0:19]}.png'.replace(":", "-")
+    file_path = f'storage/charts/{mode}-{now}-{study_name}.png'.replace(":", "-")
     plt.savefig(file_path)
 
     print(f'\nChart output saved at:\n{file_path}')

@@ -14,14 +14,21 @@ def sinwma(candles: np.ndarray, period: int = 14, source_type: str = "close", se
     :param candles: np.ndarray
     :param period: int - default: 14
     :param source_type: str - default: "close"
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
-    candles = slice_candles(candles, sequential)
+    # Accept normal array too.
+    if len(candles.shape) == 1:
+        source = candles
+    else:
+        candles = slice_candles(candles, sequential)
+        source = get_candle_source(candles, source_type=source_type)
 
-    source = get_candle_source(candles, source_type=source_type)
-    sines = np.array([np.sin((i + 1) * np.pi / (period + 1)) for i in range(0, period)])
+    sines = np.array(
+        [np.sin((i + 1) * np.pi / (period + 1)) for i in range(period)]
+    )
+
     w = sines / sines.sum()
     swv = sliding_window_view(source, window_shape=period)
     res = np.average(swv, weights=w, axis=-1)

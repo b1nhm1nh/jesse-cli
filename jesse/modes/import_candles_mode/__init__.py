@@ -12,6 +12,7 @@ from jesse.exceptions import CandleNotFoundInExchange
 from jesse.models import Candle
 from jesse.modes.import_candles_mode.drivers import drivers
 from jesse.modes.import_candles_mode.drivers.interface import CandleExchange
+from jesse.services.db import store_candles
 
 
 def run(exchange: str, symbol: str, start_date_str: str, skip_confirmation: bool = False) -> None:
@@ -37,12 +38,13 @@ def run(exchange: str, symbol: str, start_date_str: str, skip_confirmation: bool
     start_date = arrow.get(start_timestamp / 1000)
     days_count = jh.date_diff_in_days(start_date, until_date)
     candles_count = days_count * 1440
-    exchange = exchange.title()
 
     try:
         driver: CandleExchange = drivers[exchange]()
     except KeyError:
         raise ValueError(f'{exchange} is not a supported exchange')
+    except TypeError:
+        raise FileNotFoundError('You are missing the "plugins.py" file')
 
     loop_length = int(candles_count / driver.count) + 1
     # ask for confirmation
@@ -75,7 +77,9 @@ def run(exchange: str, symbol: str, start_date_str: str, skip_confirmation: bool
                 # fetch from market
                 candles = driver.fetch(symbol, temp_start_timestamp)
 
-                if not len(candles):
+                # check if candles have been returned and check those returned start with the right timestamp.
+                # Sometimes exchanges just return the earliest possible candles if the start date doesn't exist.
+                if not len(candles) or arrow.get(candles[0]['timestamp'] / 1000) > start_date:
                     click.clear()
                     first_existing_timestamp = driver.get_starting_time(symbol)
 
@@ -90,7 +94,6 @@ def run(exchange: str, symbol: str, start_date_str: str, skip_confirmation: bool
                     if temp_start_timestamp > first_existing_timestamp:
                         # see if there are candles for the same date for the backup exchange,
                         # if so, get those, if not, download from that exchange.
-                        driver.init_backup_exchange()
                         if driver.backup_exchange is not None:
                             candles = _get_candles_from_backup_exchange(
                                 exchange, driver.backup_exchange, symbol, temp_start_timestamp, temp_end_timestamp
@@ -110,9 +113,9 @@ def run(exchange: str, symbol: str, start_date_str: str, skip_confirmation: bool
 
                 # store in the database
                 if skip_confirmation:
-                    _insert_to_database(candles)
+                    store_candles(candles)
                 else:
-                    threading.Thread(target=_insert_to_database, args=[candles]).start()
+                    threading.Thread(target=store_candles, args=[candles]).start()
 
             # add as much as driver's count to the temp_start_time
             start_date = start_date.shift(minutes=driver.count)
@@ -156,8 +159,7 @@ def _get_candles_from_backup_exchange(exchange: str, backup_driver: CandleExchan
     # try fetching from market now
     days_count = jh.date_diff_in_days(jh.timestamp_to_arrow(start_timestamp), jh.timestamp_to_arrow(end_timestamp))
     # make sure it's rounded up so that we import maybe more candles, but not less
-    if days_count < 1:
-        days_count = 1
+    days_count = max(days_count, 1)
     if type(days_count) is float and not days_count.is_integer():
         days_count = math.ceil(days_count)
     candles_count = days_count * 1440
@@ -196,7 +198,7 @@ def _get_candles_from_backup_exchange(exchange: str, backup_driver: CandleExchan
             candles = _fill_absent_candles(candles, temp_start_timestamp, temp_end_timestamp)
 
             # store in the database
-            _insert_to_database(candles)
+            store_candles(candles)
 
         # add as much as driver's count to the temp_start_time
         start_date = start_date.shift(minutes=backup_driver.count)
@@ -234,9 +236,8 @@ def _get_candles_from_backup_exchange(exchange: str, backup_driver: CandleExchan
         return total_candles
 
 
-def _fill_absent_candles(temp_candles: List[Dict[str, Union[str, Any]]], start_timestamp: int, end_timestamp: int) -> \
-        List[Dict[str, Union[str, Any]]]:
-    if len(temp_candles) == 0:
+def _fill_absent_candles(temp_candles: List[Dict[str, Union[str, Any]]], start_timestamp: int, end_timestamp: int) -> List[Dict[str, Union[str, Any]]]:
+    if not temp_candles:
         raise CandleNotFoundInExchange(
             f'No candles exists in the market for this day: {jh.timestamp_to_time(start_timestamp)[:10]} \n'
             'Try another start_date'
@@ -249,8 +250,7 @@ def _fill_absent_candles(temp_candles: List[Dict[str, Union[str, Any]]], start_t
     started = False
     loop_length = ((end_timestamp - start_timestamp) / 60000) + 1
 
-    i = 0
-    while i < loop_length:
+    for _ in range(loop_length):
         candle_for_timestamp = pydash.find(
             temp_candles, lambda c: c['timestamp'] == start_timestamp)
 
@@ -286,10 +286,6 @@ def _fill_absent_candles(temp_candles: List[Dict[str, Union[str, Any]]], start_t
             candles.append(candle_for_timestamp)
 
         start_timestamp += 60000
-        i += 1
-
     return candles
 
 
-def _insert_to_database(candles: List[Dict[str, Union[str, Any]]]) -> None:
-    Candle.insert_many(candles).on_conflict_ignore().execute()

@@ -15,13 +15,16 @@ def kama(candles: np.ndarray, period: int = 30, source_type: str = "close", sequ
     :param candles: np.ndarray
     :param period: int - default: 30
     :param source_type: str - default: "close"
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
-    candles = slice_candles(candles, sequential)
+    if len(candles.shape) == 1:
+        source = candles
+    else:
+        candles = slice_candles(candles, sequential)
+        source = get_candle_source(candles, source_type=source_type)
 
-    source = get_candle_source(candles, source_type=source_type)
     res = talib.KAMA(source, timeperiod=period)
 
     return res if sequential else res[-1]

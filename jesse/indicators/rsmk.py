@@ -2,6 +2,7 @@ from collections import namedtuple
 
 import numpy as np
 import talib
+from jesse.indicators.ma import ma
 
 from jesse.helpers import get_candle_source
 
@@ -18,11 +19,11 @@ def rsmk(candles: np.ndarray, candles_compare: np.ndarray, lookback: int = 90, p
     :param candles_compare: np.ndarray
     :param period: int - default: 3
     :param source_type: str - default: "close"
-    :param sequential: bool - default=False
+    :param sequential: bool - default: False
 
     :return: float | np.ndarray
     """
-    if not sequential and len(candles) > 240:
+    if not sequential and candles.shape[0] > 240:
         candles = candles[-240:]
         candles_compare = candles_compare[-240:]
 
@@ -32,11 +33,12 @@ def rsmk(candles: np.ndarray, candles_compare: np.ndarray, lookback: int = 90, p
     a = np.log(source / source_compare)
     b = talib.MOM(a, timeperiod=lookback)
 
-    res = talib.MA(b, timeperiod=period, matype=matype) * 100
+    res = ma(b, period=period, matype=matype, sequential=True) * 100
 
-    signal = talib.MA(res, timeperiod=signal_period, matype=signal_matype)
+    signal = ma(res, period=signal_period, matype=signal_matype, sequential=True)
 
     if sequential:
         return RSMK(res, signal)
     else:
-        return RSMK(None if np.isnan(res[-1]) else res[-1], None if np.isnan(signal[-1]) else signal[-1])
+        return RSMK(res[-1], signal[-1])
+

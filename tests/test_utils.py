@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from jesse import utils
-from tests.data.test_candles_indicators import mama_candles
+from tests.data.test_candles_indicators import test_candles_19
 
 
 def test_anchor_timeframe():
@@ -20,7 +20,7 @@ def test_anchor_timeframe():
 
 
 def test_crossed():
-    candles = np.array(mama_candles)
+    candles = np.array(test_candles_19)
     cross_100 = utils.crossed(candles[:, 2], 100)
     assert cross_100 == False
     cross_120 = utils.crossed(candles[:, 2], 120)
@@ -67,7 +67,7 @@ def test_limit_stop_loss():
 
 
 def test_numpy_to_pandas():
-    candles = np.array(mama_candles)
+    candles = np.array(test_candles_19)
     columns = ["Date", "Open", "Close", "High", "Low", "Volume"]
     df = pd.DataFrame(data=candles, index=pd.to_datetime(candles[:, 0], unit="ms"), columns=columns)
     df["Date"] = pd.to_datetime(df["Date"], unit="ms")
@@ -100,7 +100,7 @@ def test_risk_to_qty():
     assert utils.risk_to_qty(10000, 5, 100, 96) == 100
 
     # when fee is included
-    assert utils.risk_to_qty(10000, 1, 100, 80, fee_rate=0.001) == 4.97
+    assert utils.risk_to_qty(10000, 1, 100, 80, precision=3, fee_rate=0.001) == 4.97
 
 
 def test_risk_to_size():
@@ -118,7 +118,7 @@ def test_risk_to_size():
 
 def test_size_to_qty():
     assert utils.size_to_qty(100, 50) == 2
-    assert utils.size_to_qty(100, 49) == 2.04
+    assert utils.size_to_qty(100, 49, precision=3) == 2.04
 
     with pytest.raises(TypeError):
         utils.size_to_qty(100, 'invalid_input')
@@ -143,3 +143,33 @@ def test_subtract_floats():
     assert utils.subtract_floats(-1.123, 1.2) == -2.323
     assert utils.subtract_floats(1.123, -1.2) == 2.323
     assert utils.subtract_floats(-1.123, -1.2) == 0.077
+
+
+def test_prices_to_returns():
+    series = np.array([50, 10, 100, 25])
+    pct = utils.prices_to_returns(series)
+    np.testing.assert_array_equal(pct, np.array([ np.nan, -80., 900., -75.]))
+
+def test_combinations_without_repeat():
+    a = np.array([4, 2, 9, 1, 3])
+    b = utils.combinations_without_repeat(a)
+    np.testing.assert_array_equal(b, np.array([[4, 2],
+       [4, 9],
+       [4, 1],
+       [4, 3],
+       [2, 4],
+       [2, 9],
+       [2, 1],
+       [2, 3],
+       [9, 4],
+       [9, 2],
+       [9, 1],
+       [9, 3],
+       [1, 4],
+       [1, 2],
+       [1, 9],
+       [1, 3],
+       [3, 4],
+       [3, 2],
+       [3, 9],
+       [3, 1]]))

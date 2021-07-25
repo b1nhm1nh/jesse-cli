@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from functools import lru_cache
 from time import sleep
 from typing import List
 
@@ -16,16 +15,8 @@ from jesse.models.utils import store_completed_trade_into_db, store_order_into_d
 from jesse.services import metrics
 from jesse.services.broker import Broker
 from jesse.store import store
+from jesse.services.cache import cached
 
-# Using functools.lru_cache
-def cached(method):
-    def decorated(self, *args, **kwargs):
-        cached_method = self._cached_methods.get(method)
-        if cached_method is None:
-            cached_method = lru_cache()(method)
-            self._cached_methods[method] = cached_method
-        return cached_method(self, *args, **kwargs)
-    return decorated
 
 class Strategy(ABC):
     """The parent strategy class which every strategy must extend"""
@@ -80,11 +71,24 @@ class Strategy(ABC):
         self.position = selectors.get_position(self.exchange, self.symbol)
         self.broker = Broker(self.position, self.exchange, self.symbol, self.timeframe)
 
-        if self.hp is None:
-            if len(self.hyperparameters()) > 0:
-                self.hp = {}
-                for dna in self.hyperparameters():
-                    self.hp[dna['name']] = dna['default']
+        if self.hp is None and len(self.hyperparameters()) > 0:
+            self.hp = {}
+            for dna in self.hyperparameters():
+                self.hp[dna['name']] = dna['default']
+
+    @property
+    def _price_precision(self):
+        """
+        used when live trading because few exchanges require numbers to have a specific precision
+        """
+        return selectors.get_exchange(self.exchange).vars['precisions'][self.symbol]['price_precision']
+
+    @property
+    def _qty_precision(self):
+        """
+        used when live trading because few exchanges require numbers to have a specific precision
+        """
+        return selectors.get_exchange(self.exchange).vars['precisions'][self.symbol]['qty_precision']
 
     def _broadcast(self, msg: str) -> None:
         """Broadcasts the event to all OTHER strategies
@@ -250,8 +254,7 @@ class Strategy(ABC):
             self._take_profit = self.take_profit.copy()
             self._log_take_profit = self._take_profit.copy()
 
-    @staticmethod
-    def _convert_to_numpy_array(arr, name) -> np.ndarray:
+    def _convert_to_numpy_array(self, arr, name) -> np.ndarray:
         if type(arr) is np.ndarray:
             return arr
 
@@ -261,10 +264,17 @@ class Strategy(ABC):
 
             if jh.is_live():
                 # in livetrade mode, we'll need them rounded
-                price = arr[0][1]
+                current_exchange = selectors.get_exchange(self.exchange)
 
-                prices = jh.round_price_for_live_mode(price, arr[:, 1])
-                qtys = jh.round_qty_for_live_mode(price, arr[:, 0])
+                # skip rounding if the exchange doesn't have values for 'precisions'
+                if 'precisions' not in current_exchange.vars:
+                    return arr
+
+                price_precision = current_exchange.vars['precisions'][self.symbol]['price_precision']
+                qty_precision = current_exchange.vars['precisions'][self.symbol]['qty_precision']
+
+                prices = jh.round_price_for_live_mode(arr[:, 1], price_precision)
+                qtys = jh.round_qty_for_live_mode(arr[:, 0], qty_precision)
 
                 arr[:, 0] = qtys
                 arr[:, 1] = prices
@@ -581,11 +591,13 @@ class Strategy(ABC):
             raise
 
         # validations: stop-loss and take-profit should not be the same
-        if self.position.is_open:
-            if (self.stop_loss is not None and self.take_profit is not None) and np.array_equal(self.stop_loss,
-                                                                                                self.take_profit):
-                raise exceptions.InvalidStrategy(
-                    'stop-loss and take-profit should not be exactly the same. Just use either one of them and it will do.')
+        if (
+            self.position.is_open
+            and (self.stop_loss is not None and self.take_profit is not None)
+            and np.array_equal(self.stop_loss, self.take_profit)
+        ):
+            raise exceptions.InvalidStrategy(
+                'stop-loss and take-profit should not be exactly the same. Just use either one of them and it will do.')
 
     def update_position(self):
         pass
@@ -890,7 +902,6 @@ class Strategy(ABC):
             m.cache_clear()
 
     @property
-    @cached
     def current_candle(self) -> np.ndarray:
         """
         Returns current trading candle
@@ -900,7 +911,6 @@ class Strategy(ABC):
         return store.candles.get_current_candle(self.exchange, self.symbol, self.timeframe).copy()
 
     @property
-    @cached
     def open(self) -> float:
         """
         Returns the closing price of the current candle for this strategy.
@@ -911,7 +921,6 @@ class Strategy(ABC):
         return self.current_candle[1]
 
     @property
-    @cached
     def close(self) -> float:
         """
         Returns the closing price of the current candle for this strategy.
@@ -922,7 +931,6 @@ class Strategy(ABC):
         return self.current_candle[2]
 
     @property
-    @cached
     def price(self) -> float:
         """
         Same as self.close, except in livetrde, this is rounded as the exchanges require it.
@@ -933,7 +941,6 @@ class Strategy(ABC):
         return self.position.current_price
 
     @property
-    @cached
     def high(self) -> float:
         """
         Returns the closing price of the current candle for this strategy.
@@ -944,7 +951,6 @@ class Strategy(ABC):
         return self.current_candle[3]
 
     @property
-    @cached
     def low(self) -> float:
         """
         Returns the closing price of the current candle for this strategy.
@@ -955,7 +961,6 @@ class Strategy(ABC):
         return self.current_candle[4]
 
     @property
-    @cached
     def candles(self) -> np.ndarray:
         """
         Returns candles for current trading route
@@ -964,7 +969,6 @@ class Strategy(ABC):
         """
         return store.candles.get_candles(self.exchange, self.symbol, self.timeframe)
 
-    @cached
     def get_candles(self, exchange: str, symbol: str, timeframe: str) -> np.ndarray:
         """
         Get candles by passing exchange, symbol, and timeframe
@@ -978,7 +982,6 @@ class Strategy(ABC):
         return store.candles.get_candles(exchange, symbol, timeframe)
 
     @property
-    @cached
     def orders(self) -> List[Order]:
         """
         Returns all the orders submitted by for this strategy. Just as a helper
@@ -990,7 +993,6 @@ class Strategy(ABC):
         return store.orders.get_orders(self.exchange, self.symbol)
 
     @property
-    @cached
     def trades(self) -> List[CompletedTrade]:
         """
         Returns all the completed trades for this strategy.
@@ -1005,38 +1007,33 @@ class Strategy(ABC):
         """
         Returns all the metrics of the strategy.
         """
-        if self.trades_count in self._cached_metrics:
-            return self._cached_metrics[self.trades_count]
-        else:
-            self._cached_metrics[self.trades_count] = metrics.trades(store.completed_trades.trades, store.app.daily_balance)
-            return self._cached_metrics[self.trades_count]
+        if self.trades_count not in self._cached_metrics:
+            self._cached_metrics[self.trades_count] = metrics.trades(
+                store.completed_trades.trades, store.app.daily_balance
+            )
+        return self._cached_metrics[self.trades_count]
 
     @property
-    @cached
     def time(self) -> int:
         """returns the current time"""
         return store.app.time
 
     @property
-    @cached
     def balance(self) -> float:
         """alias for self.capital"""
         return self.capital
 
     @property
-    @cached
     def capital(self) -> float:
         """the current capital in the trading exchange"""
         return self.position.exchange.wallet_balance(self.symbol)
 
     @property
-    @cached
     def available_margin(self) -> float:
         """Current available margin considering leverage"""
         return self.position.exchange.available_margin(self.symbol)
 
     @property
-    @cached
     def fee_rate(self) -> float:
         return selectors.get_exchange(self.exchange).fee_rate
 
@@ -1142,27 +1139,22 @@ class Strategy(ABC):
             store_order_into_db(order)
 
     @property
-    @cached
     def is_long(self) -> bool:
         return self.position.type == 'long'
 
     @property
-    @cached
     def is_short(self) -> bool:
         return self.position.type == 'short'
 
     @property
-    @cached
     def is_open(self) -> bool:
         return self.position.is_open
 
     @property
-    @cached
     def is_close(self) -> bool:
         return self.position.is_close
 
     @property
-    @cached
     def average_stop_loss(self) -> float:
         if self._stop_loss is None:
             raise exceptions.InvalidStrategy('You cannot access self.average_stop_loss before setting self.stop_loss')
@@ -1171,7 +1163,6 @@ class Strategy(ABC):
         return (np.abs(arr[:, 0] * arr[:, 1])).sum() / np.abs(arr[:, 0]).sum()
 
     @property
-    @cached
     def average_take_profit(self) -> float:
         if self._take_profit is None:
             raise exceptions.InvalidStrategy(
@@ -1181,7 +1172,6 @@ class Strategy(ABC):
         return (np.abs(arr[:, 0] * arr[:, 1])).sum() / np.abs(arr[:, 0]).sum()
 
     @property
-    @cached
     def average_entry_price(self) -> float:
         if self.is_long:
             arr = self._buy
@@ -1213,18 +1203,15 @@ class Strategy(ABC):
         return store.vars
 
     @property
-    @cached
     def routes(self) -> List[Route]:
         from jesse.routes import router
         return router.routes
 
     @property
-    @cached
     def has_active_entry_orders(self) -> bool:
         return len(self._open_position_orders) > 0
 
     @property
-    @cached
     def leverage(self) -> int:
         if type(self.position.exchange) is SpotExchange:
             return 1
@@ -1232,3 +1219,29 @@ class Strategy(ABC):
             return self.position.exchange.futures_leverage
         else:
             raise ValueError('exchange type not supported!')
+
+    @property
+    def mark_price(self):
+        return self.position.mark_price
+
+    @property
+    def funding_rate(self):
+        return self.position.funding_rate
+
+    @property
+    def next_funding_timestamp(self):
+        return self.position.next_funding_timestamp
+
+    @property
+    def liquidation_price(self):
+        return self.position.liquidation_price
+
+    def log(self, msg, log_type='info'):
+        msg = str(msg)
+
+        if log_type == 'info':
+            logger.info(msg)
+        elif log_type == 'error':
+            logger.error(msg)
+        else:
+            raise ValueError(f'log_type should be either "info" or "error". You passed {log_type}')

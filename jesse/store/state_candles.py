@@ -8,12 +8,19 @@ from jesse.exceptions import RouteNotFound
 from jesse.libs import DynamicNumpyArray
 from jesse.models import store_candle_into_db
 from jesse.services.candle import generate_candle_from_one_minutes
+from jesse.services import logger
 
 
 class CandlesState:
     def __init__(self) -> None:
         self.storage = {}
-        self.is_initiated = False
+        self.are_all_initiated = False
+        self.initiated_pairs = {}
+
+    def mark_all_as_initiated(self):
+        for k in self.initiated_pairs:
+            self.initiated_pairs[k] = True
+        self.are_all_initiated = True
 
     def get_storage(self, exchange: str, symbol: str, timeframe: str):
         key = jh.key(exchange, symbol, timeframe)
@@ -47,7 +54,7 @@ class CandlesState:
             timeframe: str,
             with_execution: bool = True,
             with_generation: bool = True,
-            is_forming_candle: bool = False
+            with_skip: bool = True
     ) -> None:
         if jh.is_collecting_data():
             # make sure it's a complete (and not a forming) candle
@@ -58,7 +65,18 @@ class CandlesState:
         arr: DynamicNumpyArray = self.get_storage(exchange, symbol, timeframe)
 
         if jh.is_live():
+            # ignore if candle is still being initially imported
+            if with_skip and f'{exchange}-{symbol}' not in self.initiated_pairs:
+                # logger.info(f'SKIPPED {exchange}-{symbol}!')
+                return
+
             self.update_position(exchange, symbol, candle)
+
+            # ignore new candle at the time of execution because it messes
+            # the count of candles without actually having an impact
+            if candle[0] >= jh.now():
+                return
+
         # initial
         if len(arr) == 0:
             arr.append(candle)
@@ -73,7 +91,7 @@ class CandlesState:
 
             # generate other timeframes
             if with_generation and timeframe == '1m':
-                self.generate_bigger_timeframes(candle, exchange, symbol, with_execution, is_forming_candle)
+                self.generate_bigger_timeframes(candle, exchange, symbol, with_execution)
 
         # if it's the last candle again, update
         elif candle[0] == arr[-1][0]:
@@ -85,7 +103,7 @@ class CandlesState:
 
             # regenerate other timeframes
             if with_generation and timeframe == '1m':
-                self.generate_bigger_timeframes(candle, exchange, symbol, with_execution, is_forming_candle)
+                self.generate_bigger_timeframes(candle, exchange, symbol, with_execution)
 
         # past candles will be ignored (dropped)
         elif candle[0] < arr[-1][0]:
@@ -100,11 +118,15 @@ class CandlesState:
         if p is None:
             return
 
-        # update position.current_price
-        p.current_price = jh.round_price_for_live_mode(candle[2], candle[2])
+        if jh.is_live():
+            price_precision = selectors.get_exchange(exchange).vars['precisions'][symbol]['price_precision']
 
-    def generate_bigger_timeframes(self, candle: np.ndarray, exchange: str, symbol: str, with_execution: bool,
-                                   is_forming_candle: bool) -> None:
+            # update position.current_price
+            p.current_price = jh.round_price_for_live_mode(candle[2], price_precision)
+        else:
+            p.current_price = candle[2]
+
+    def generate_bigger_timeframes(self, candle: np.ndarray, exchange: str, symbol: str, with_execution: bool) -> None:
         if not jh.is_live():
             return
 
@@ -115,22 +137,16 @@ class CandlesState:
 
             last_candle = self.get_current_candle(exchange, symbol, timeframe)
             generate_from_count = int((candle[0] - last_candle[0]) / 60_000)
-            required_for_complete_candle = jh.timeframe_to_one_minutes(timeframe)
             short_candles = self.get_candles(exchange, symbol, '1m')[-1 - generate_from_count:]
-            if generate_from_count == (required_for_complete_candle - 1) and not is_forming_candle:
-                is_forming_candle = False
-            else:
-                is_forming_candle = True
 
             # update latest candle
             generated_candle = generate_candle_from_one_minutes(
                 timeframe,
                 short_candles,
-                True
+                accept_forming_candles=True
             )
 
-            self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution, with_generation=False,
-                            is_forming_candle=is_forming_candle)
+            self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution, with_generation=False)
 
     def simulate_order_execution(self, exchange: str, symbol: str, timeframe: str, new_candle: np.ndarray) -> None:
         previous_candle = self.get_current_candle(exchange, symbol, timeframe)
@@ -151,7 +167,7 @@ class CandlesState:
     def batch_add_candle(self, candles: np.ndarray, exchange: str, symbol: str, timeframe: str,
                          with_generation: bool = True) -> None:
         for c in candles:
-            self.add_candle(c, exchange, symbol, timeframe, with_execution=False, with_generation=with_generation)
+            self.add_candle(c, exchange, symbol, timeframe, with_execution=False, with_generation=with_generation, with_skip=False)
 
     def forming_estimation(self, exchange: str, symbol: str, timeframe: str) -> tuple:
         long_key = jh.key(exchange, symbol, timeframe)
@@ -217,14 +233,12 @@ class CandlesState:
         short_count = len(self.get_storage(exchange, symbol, '1m'))
 
         # complete candle
-        if dif == 0:
-            if long_count == 0:
-                return np.zeros((0, 6))
-            else:
-                return self.storage[long_key][-1]
-        # generate forming
-        else:
+        if dif != 0:
             return generate_candle_from_one_minutes(
                 timeframe, self.storage[short_key][short_count - dif:short_count],
                 True
             )
+        if long_count == 0:
+            return np.zeros((0, 6))
+        else:
+            return self.storage[long_key][-1]

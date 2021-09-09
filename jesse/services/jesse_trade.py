@@ -3,12 +3,13 @@ from starlette.responses import JSONResponse
 from jesse.services.auth import get_access_token
 
 
-def feedback(description: str) -> JSONResponse:
+def feedback(description: str, ticket: bool) -> JSONResponse:
     access_token = get_access_token()
 
     res = requests.post(
-        'https://jesse.trade/api/feedback', {
-            'description': description
+        'http://jesse-trade.test/api/feedback', {
+            'description': description,
+            'ticket': ticket
         },
         headers={'Authorization': f'Bearer {access_token}'}
     )

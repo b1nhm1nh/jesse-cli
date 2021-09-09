@@ -98,7 +98,7 @@ def make_strategy(json_request: FeedbackRequestJson, authorization: Optional[str
         return authenticator.unauthorized_response()
 
     from jesse.services import jesse_trade
-    return jesse_trade.feedback(json_request.description)
+    return jesse_trade.feedback(json_request.description, json_request.ticket)
 
 
 @fastapi_app.post("/report-exception")

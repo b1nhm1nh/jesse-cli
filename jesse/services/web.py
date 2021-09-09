@@ -97,8 +97,10 @@ class NewStrategyRequestJson(BaseModel):
 
 class FeedbackRequestJson(BaseModel):
     description: str
+    ticket: bool
 
 
 class ReportExceptionRequestJson(BaseModel):
     description: str
     traceback: str
+    ticket: bool

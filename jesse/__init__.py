@@ -107,7 +107,7 @@ def report_exception(json_request: ReportExceptionRequestJson, authorization: Op
         return authenticator.unauthorized_response()
 
     from jesse.services import jesse_trade
-    return jesse_trade.report_exception(json_request.description, json_request.traceback)
+    return jesse_trade.report_exception(json_request.description, json_request.traceback, json_request.ticket)
 
 
 @fastapi_app.post("/get-config")

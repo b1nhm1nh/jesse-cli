@@ -22,13 +22,14 @@ def feedback(description: str) -> JSONResponse:
     }, status_code=200)
 
 
-def report_exception(description: str, traceback: str) -> JSONResponse:
+def report_exception(description: str, traceback: str, ticket: bool) -> JSONResponse:
     access_token = get_access_token()
 
     res = requests.post(
-        'https://jesse.trade/api/exception', {
+        'http://jesse-trade.test/api/exception', {
             'description': description,
-            'traceback': traceback
+            'traceback': traceback,
+            'ticket': ticket
         },
         headers={'Authorization': f'Bearer {access_token}'}
     )

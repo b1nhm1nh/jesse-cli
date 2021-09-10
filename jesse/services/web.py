@@ -104,3 +104,10 @@ class ReportExceptionRequestJson(BaseModel):
     description: str
     traceback: str
     ticket: bool
+
+
+class CreateTicketRequestJson(BaseModel):
+    description: str
+    title: str
+
+

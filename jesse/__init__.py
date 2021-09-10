@@ -14,7 +14,7 @@ from jesse.services import auth as authenticator
 from jesse.services.redis import async_redis, async_publish, sync_publish
 from jesse.services.web import fastapi_app, BacktestRequestJson, ImportCandlesRequestJson, CancelRequestJson, \
     LoginRequestJson, ConfigRequestJson, LoginJesseTradeRequestJson, NewStrategyRequestJson, FeedbackRequestJson, \
-    ReportExceptionRequestJson
+    ReportExceptionRequestJson, CreateTicketRequestJson
 from jesse.services.failure import register_custom_exception_handler
 import uvicorn
 from asyncio import Queue
@@ -108,6 +108,22 @@ def report_exception(json_request: ReportExceptionRequestJson, authorization: Op
 
     from jesse.services import jesse_trade
     return jesse_trade.report_exception(json_request.description, json_request.traceback, json_request.ticket)
+
+@fastapi_app.get("/get-tickets")
+def report_exception(authorization: Optional[str] = Header(None)):
+    if not authenticator.is_valid_token(authorization):
+        return authenticator.unauthorized_response()
+
+    from jesse.services import jesse_trade
+    return jesse_trade.get_tickets()
+
+@fastapi_app.post("/tickets")
+def report_exception(json_request: CreateTicketRequestJson,authorization: Optional[str] = Header(None)):
+    if not authenticator.is_valid_token(authorization):
+        return authenticator.unauthorized_response()
+
+    from jesse.services import jesse_trade
+    return jesse_trade.create_ticket(json_request.description, json_request.title)
 
 
 @fastapi_app.post("/get-config")

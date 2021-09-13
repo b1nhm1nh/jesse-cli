@@ -111,3 +111,12 @@ class CreateTicketRequestJson(BaseModel):
     title: str
 
 
+class SeenMessage(BaseModel):
+    ticket_id: int
+
+
+class AddMessage(BaseModel):
+    ticket_id: int
+    description: str
+
+

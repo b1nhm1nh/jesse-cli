@@ -87,3 +87,50 @@ def create_ticket(description: str, title: str) -> JSONResponse:
         'status': 'success',
         'message': 'Ticket created successfully.'
     }, status_code=200)
+
+
+def seen_message(ticket_id: int) -> JSONResponse:
+    access_token = get_access_token()
+
+    res = requests.post(
+        'http://jesse-trade.test/api/message/seen', {
+            'ticket_id': ticket_id,
+        },
+        headers={'Authorization': f'Bearer {access_token}'}
+    )
+
+    if res.status_code != 200:
+        return JSONResponse({
+            'status': 'error',
+            'message': res.json()['message']
+            }, res.status_code)
+
+    if res.status_code == 200:
+        return JSONResponse({
+            'status': 'success',
+            'message': res.json()['message']
+            }, res.status_code)
+
+
+def add_message(ticket_id: int, description: str) -> JSONResponse:
+    access_token = get_access_token()
+
+    res = requests.post(
+        'http://jesse-trade.test/api/message', {
+            'ticket_id': ticket_id,
+            'description': description
+        },
+        headers={'Authorization': f'Bearer {access_token}'}
+    )
+
+    if res.status_code != 200:
+        return JSONResponse({
+            'status': 'error',
+            'message': res.json()['message']
+            }, res.status_code)
+
+    if res.status_code == 200:
+        return JSONResponse({
+            'status': 'success',
+            'message': 'Message created successfully'
+            }, res.status_code)

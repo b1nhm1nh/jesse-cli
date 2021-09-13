@@ -117,7 +117,7 @@ def report_exception(authorization: Optional[str] = Header(None)):
     from jesse.services import jesse_trade
     return jesse_trade.get_tickets()
 
-@fastapi_app.post("/tickets")
+@fastapi_app.post("/ticket")
 def report_exception(json_request: CreateTicketRequestJson,authorization: Optional[str] = Header(None)):
     if not authenticator.is_valid_token(authorization):
         return authenticator.unauthorized_response()

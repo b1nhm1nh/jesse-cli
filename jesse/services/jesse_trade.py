@@ -69,17 +69,21 @@ def create_ticket(description: str, title: str) -> JSONResponse:
     access_token = get_access_token()
 
     res = requests.post(
-        'http://jesse-trade.test/api/exception', {
+        'http://jesse-trade.test/api/ticket', {
             'description': description,
             'title': title,
+            'type': 'user_created'
         },
         headers={'Authorization': f'Bearer {access_token}'}
     )
 
-    success_message = 'Exception report submitted successfully'
-    error_message = f"{res.status_code} error: {res.json()['message']}"
+    if res.status_code != 200:
+        return JSONResponse({
+            'status': 'error',
+            'message': res.json()['message']
+            }, res.status_code)
 
     return JSONResponse({
-        'status': 'success' if res.status_code == 200 else 'error',
-        'message': success_message if res.status_code == 200 else error_message
+        'status': 'success',
+        'message': 'Ticket created successfully.'
     }, status_code=200)

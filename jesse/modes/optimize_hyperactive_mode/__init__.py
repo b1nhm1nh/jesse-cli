@@ -79,7 +79,7 @@ class Optimizer():
     def objective_function(self, hp: str):
         score = np.nan
         try:
-            if len(self.hyperparameters_rules) == 0 or jh.hp_rules_valid(hp, self.hyperparameters_rules):
+            if self.hyperparameters_rules is None or jh.hp_rules_valid(hp, self.hyperparameters_rules):
                 # init candle store
                 store.candles.init_storage(5000)
                 # inject required TRAINING candles to the candle store

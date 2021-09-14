@@ -4,6 +4,7 @@ import jesse.indicators as ta
 from jesse.factories import fake_range_candle_from_range_prices
 from .data.test_candles_indicators import *
 
+matypes = 39
 
 def test_acosc():
     candles = np.array(test_candles_19)
@@ -373,6 +374,7 @@ def test_cvi():
     assert len(seq) == len(candles)
     assert seq[-1] == single
 
+
 def test_cwma():
     candles = np.array(test_candles_19)
 
@@ -382,6 +384,7 @@ def test_cwma():
     assert round(single, 2) == 182.8
     assert len(seq) == len(candles)
     assert seq[-1] == single
+
 
 def test_damiani_volatmeter():
     candles = np.array(test_candles_19)
@@ -584,6 +587,7 @@ def test_emv():
     assert len(seq) == len(candles)
     assert seq[-1] == single
 
+
 def test_epma():
     candles = np.array(test_candles_19)
 
@@ -593,6 +597,7 @@ def test_epma():
     assert round(single, 2) == 175.31
     assert len(seq) == len(candles)
     assert seq[-1] == single
+
 
 def test_er():
     candles = np.array(test_candles_19)
@@ -785,13 +790,23 @@ def test_ht_trendmode():
     assert len(seq) == len(candles)
     assert seq[-1] == single
 
+
 def test_hurst():
     candles = np.array(test_candles_19)
-    rs = ta.hurst_exponent(candles, method=0)
+
+    try:
+        import numba
+        no_numba = False
+    except ImportError:
+        no_numba = True
+
+    if not no_numba:
+        rs = ta.hurst_exponent(candles, method=0)
+        assert round(rs, 2) == 0.51
+
     dma = ta.hurst_exponent(candles, method=1)
     dsod = ta.hurst_exponent(candles, method=2)
 
-    assert round(rs, 2) == 0.51
     assert round(dma, 2) == 0.26
     assert round(dsod, 2) == 0.5
 
@@ -873,6 +888,7 @@ def test_jma():
     assert len(seq) == len(candles)
     assert seq[-1] == single
 
+
 def test_jsa():
     # use the same candles as dema_candles
     candles = np.array(test_candles_19)
@@ -883,6 +899,7 @@ def test_jsa():
     assert round(single, 2) == 172.26
     assert len(seq) == len(candles)
     assert seq[-1] == single
+
 
 def test_kama():
     # use the same candles as dema_candles
@@ -903,7 +920,7 @@ def test_kaufmanstop():
     single = ta.kaufmanstop(candles)
     seq = ta.kaufmanstop(candles, sequential=True)
 
-    assert round(single, 0) == -57
+    assert round(single, 0) == 57
     assert len(seq) == len(candles)
     assert seq[-1] == single
 
@@ -1122,6 +1139,14 @@ def test_macdext():
     assert len(seq.macd) == len(candles)
     assert len(seq.signal) == len(candles)
     assert len(seq.hist) == len(candles)
+
+    for matype in range(matypes):
+        if matype != 29:
+            single = ta.macdext(candles, fast_period=12, fast_matype=matype, slow_period=26, slow_matype=matype, signal_period=9, signal_matype=matype)
+            assert type(single).__name__ == 'MACDEXT'
+            assert type(single.macd) == np.float64
+            assert type(single.signal) == np.float64
+            assert type(single.hist) == np.float64
 
 
 def test_mama():
@@ -1474,6 +1499,7 @@ def test_pivot4():
     assert len(seq.s3) == len(candles)
     assert len(seq.s4) == len(candles)
 
+
 def test_pma():
     candles = np.array(test_candles_19)
 
@@ -1545,6 +1571,18 @@ def test_reflex():
     seq = ta.reflex(candles, sequential=True)
 
     assert round(single, 2) == -0.55
+    assert len(seq) == len(candles)
+    assert seq[-1] == single
+
+
+def test_rma():
+    # use the same candles as wavetrend, Uses 'high' series instead of close
+    candles = np.array(wavetrend_candles)
+
+    single = ta.rma(candles)
+    seq = ta.rma(candles, sequential=True)
+
+    assert round(single, 2) == 31887.21
     assert len(seq) == len(candles)
     assert seq[-1] == single
 
@@ -2225,26 +2263,6 @@ def test_wma():
     assert seq[-1] == single
 
 
-def test_zlema():
-    candles = np.array(test_candles_19)
-    single = ta.zlema(candles)
-    seq = ta.zlema(candles, sequential=True)
-
-    assert round(single, 0) == 189
-    assert len(seq) == len(candles)
-    assert seq[-1] == single
-
-
-def test_zscore():
-    candles = np.array(test_candles_19)
-    single = ta.zscore(candles)
-    seq = ta.zscore(candles, sequential=True)
-
-    assert round(single, 1) == -3.2
-    assert len(seq) == len(candles)
-    assert seq[-1] == single
-
-
 def test_wt():
     candles = np.array(wavetrend_candles)
     single = ta.wt(candles)
@@ -2268,3 +2286,23 @@ def test_wt():
     assert seq.wtOverbought[-1] is single.wtOverbought
     assert seq.wtVwap[-1] == single.wtVwap
     assert len(seq.wt1) == len(candles)
+
+
+def test_zlema():
+    candles = np.array(test_candles_19)
+    single = ta.zlema(candles)
+    seq = ta.zlema(candles, sequential=True)
+
+    assert round(single, 0) == 189
+    assert len(seq) == len(candles)
+    assert seq[-1] == single
+
+
+def test_zscore():
+    candles = np.array(test_candles_19)
+    single = ta.zscore(candles)
+    seq = ta.zscore(candles, sequential=True)
+
+    assert round(single, 1) == -3.2
+    assert len(seq) == len(candles)
+    assert seq[-1] == single

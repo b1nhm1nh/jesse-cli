@@ -6,7 +6,7 @@ import string
 import sys
 import uuid
 from typing import List, Tuple, Union, Any
-
+from pprint import pprint
 import arrow
 import click
 import numpy as np
@@ -558,7 +558,7 @@ def quote_asset(symbol: str) -> str:
 
 
 def random_str(num_characters: int = 8) -> str:
-    return ''.join(random.choice(string.ascii_letters) for i in range(num_characters))
+    return ''.join(random.choice(string.ascii_letters) for _ in range(num_characters))
 
 
 def readable_duration(seconds: int, granularity: int = 2) -> str:
@@ -653,9 +653,9 @@ def side_to_type(s: str) -> str:
     raise ValueError
 
 
-def string_after_character(string: str, character: str) -> str:
+def string_after_character(s: str, character: str) -> str:
     try:
-        return string.split(character, 1)[1]
+        return s.split(character, 1)[1]
     except IndexError:
         return None
 
@@ -694,13 +694,15 @@ def error(msg: str, force_print: bool = False) -> None:
         from jesse.services import logger
         logger.error(msg)
         if force_print:
-            print('\n')
-            print(color('========== critical error =========='.upper(), 'red'))
-            print(color(msg, 'red'))
+            _print_error(msg)
     else:
-        print('\n')
-        print(color('========== critical error =========='.upper(), 'red'))
-        print(color(msg, 'red'))
+        _print_error(msg)
+
+
+def _print_error(msg):
+    print('\n')
+    print(color('========== critical error =========='.upper(), 'red'))
+    print(color(msg, 'red'))
 
 
 def timeframe_to_one_minutes(timeframe: str) -> int:
@@ -783,3 +785,39 @@ def closing_side(position_type: str) -> str:
         return 'buy'
     else:
         raise ValueError(f'Value entered for position_type ({position_type}) is not valid')
+
+
+def dd(item, pretty=True):
+    """
+    Dump and Die but pretty: used for debugging when developing Jesse
+    """
+    dump(item, pretty)
+    terminate_app()
+
+
+def dump(item, pretty=True):
+    """
+    Dump object in pretty format: used for debugging when developing Jesse
+    """
+    print(
+        color('\n========= Debugging Value =========='.upper(), 'yellow')
+    )
+
+    if pretty:
+        pprint(item)
+    else:
+        print(item)
+
+    print(
+        color('====================================\n', 'yellow')
+    )
+
+
+def float_or_none(item):
+    """
+    Return the float of the value if it's not None
+    """
+    if item is None:
+        return None
+    else:
+        return float(item)

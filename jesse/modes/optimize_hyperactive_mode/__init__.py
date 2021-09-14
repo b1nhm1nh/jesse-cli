@@ -165,7 +165,7 @@ class Optimizer():
     def run(self):
 
         # create an instance of the ProgressBoard
-        progress_board = ProgressBoard()
+        # progress_board = ProgressBoard()
 
         hyper = hyperactive.Hyperactive(distribution="multiprocessing",
                                         verbosity=["progress_bar", "print_results", "print_times"])
@@ -256,12 +256,12 @@ class Optimizer():
                 search_data.to_csv(f, sep=";", index=False, na_rep='nan')
 
             hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer,
-                             n_iter=self.iterations,  progress_board=progress_board,
+                             n_iter=self.iterations,
                              n_jobs=self.cpu_cores)
         else:
             # mem.drop('daily_balance', 1, inplace=True)
             hyper.add_search(self.objective_function, self.search_space, optimizer=optimizer, memory_warm_start=mem,
-                             n_iter=self.iterations,  progress_board=progress_board,
+                             n_iter=self.iterations,
                              n_jobs=self.cpu_cores)
         hyper.run()
 

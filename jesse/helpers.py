@@ -144,11 +144,11 @@ def dna_to_hp(strategy_hp: list, dna: str) -> dict:
 def hp_to_dna(strategy_hp: list, values: list) -> str:
     hp = ""
 
-    for val, h in zip(values, strategy_hp):
+    for h in strategy_hp:
         if h['type'] is int or h['type'] is float:
             encoded_gene = chr(
                 round(
-                    convert_number(h['max'], h['min'], 119, 40, val)
+                    convert_number(h['max'], h['min'], 119, 40, values[h['name']])
                 )
             )
         else:

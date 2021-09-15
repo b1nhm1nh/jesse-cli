@@ -107,8 +107,11 @@ def test_hp_to_dna():
         {'name': 'hp1', 'type': float, 'min': 0.01, 'max': 1.0, 'default': 0.09},
         {'name': 'hp2', 'type': int, 'min': 1, 'max': 10, 'default': 2},
     ]
-    values = [0.08518987341772151, 3]
-    assert jh.hp_to_dna(strategy_hp, values) == '.:'
+    para_dict = {
+        "hp1": 0.08518987341772151,
+        "hp2": 3,
+    }
+    assert jh.hp_to_dna(strategy_hp, para_dict) == '.:'
 
 
 def test_dump_exception():

@@ -85,7 +85,8 @@ def create_ticket(description: str, title: str) -> JSONResponse:
 
     return JSONResponse({
         'status': 'success',
-        'message': 'Ticket created successfully.'
+        'message': 'Ticket created successfully.',
+        'ticket_id': res.json()['ticket_id']
     }, status_code=200)
 
 

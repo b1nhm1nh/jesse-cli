@@ -7,7 +7,7 @@ def feedback(description: str, ticket: bool) -> JSONResponse:
     access_token = get_access_token()
 
     res = requests.post(
-        'http://jesse-trade.test/api/feedback', {
+        'https://jesse.trade/api/feedback', {
             'description': description,
             'ticket': ticket
         },
@@ -27,7 +27,7 @@ def report_exception(description: str, traceback: str, ticket: bool) -> JSONResp
     access_token = get_access_token()
 
     res = requests.post(
-        'http://jesse-trade.test/api/exception', {
+        'https://jesse.trade/api/exception', {
             'description': description,
             'traceback': traceback,
             'ticket': ticket
@@ -48,7 +48,7 @@ def get_tickets():
     access_token = get_access_token()
 
     res = requests.get(
-        'http://jesse-trade.test/api/tickets',
+        'https://jesse.trade/api/tickets',
         headers={'Authorization': f'Bearer {access_token}'}
     )
 
@@ -69,7 +69,7 @@ def create_ticket(description: str, title: str) -> JSONResponse:
     access_token = get_access_token()
 
     res = requests.post(
-        'http://jesse-trade.test/api/ticket', {
+        'https://jesse.trade/api/ticket', {
             'description': description,
             'title': title,
             'type': 'user_created'
@@ -94,7 +94,7 @@ def seen_message(ticket_id: int) -> JSONResponse:
     access_token = get_access_token()
 
     res = requests.post(
-        'http://jesse-trade.test/api/message/seen', {
+        'https://jesse.trade/api/message/seen', {
             'ticket_id': ticket_id,
         },
         headers={'Authorization': f'Bearer {access_token}'}
@@ -117,7 +117,7 @@ def add_message(ticket_id: int, description: str) -> JSONResponse:
     access_token = get_access_token()
 
     res = requests.post(
-        'http://jesse-trade.test/api/message', {
+        'https://jesse.trade/api/message', {
             'ticket_id': ticket_id,
             'description': description
         },
@@ -141,7 +141,7 @@ def edit_message(ticket_id: int,message_id: int ,description: str) -> JSONRespon
     access_token = get_access_token()
 
     res = requests.post(
-        'http://jesse-trade.test/api/message', {
+        'https://jesse.trade/api/message', {
             'ticket_id': ticket_id,
             'message_id': message_id,
             'description': description

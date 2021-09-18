@@ -120,3 +120,9 @@ class AddMessage(BaseModel):
     description: str
 
 
+class EditMessage(BaseModel):
+    ticket_id: int
+    message_id: int
+    description: str
+
+

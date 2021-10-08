@@ -13,6 +13,10 @@
 [![Blog](https://img.shields.io/badge/Blog-Get%20the%20news!-blueviolet)](https://jesse.trade/blog)
 ---
 Jesse is an advanced crypto trading framework which aims to simplify researching and defining trading strategies.
+---
+CTF Branch: Custom Time Frame
+- run in backtest mode now
+- work with timeframe that 1440 % tf == 0 
 
 ## Why Jesse?
 In short, Jesse is more accurate than other solutions, and way more simple. 

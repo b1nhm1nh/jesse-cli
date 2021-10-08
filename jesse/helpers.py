@@ -683,10 +683,29 @@ def _print_error(msg: str) -> None:
     print(color('========== critical error =========='.upper(), 'red'))
     print(color(msg, 'red'))
 
-
+#convert timeframe string to int
+# end with 'm' for minutes
+# end with 'h' for hours
+# end with 'D' for days
+# end with 'w' for weeks
+# end with 'M' for months    
 def timeframe_to_one_minutes(timeframe: str) -> int:
     from jesse.enums import timeframes
     from jesse.exceptions import InvalidTimeframe
+    if timeframe.endswith('m'):
+        return int(timeframe[:-1])
+    elif timeframe.endswith('h'):
+        return int(timeframe[:-1]) * 60
+    elif timeframe.endswith('D'):
+        return int(timeframe[:-1]) * 60 * 24
+    elif timeframe.endswith('w'):
+        return int(timeframe[:-1]) * 60 * 24 * 7
+    elif timeframe.endswith('M'):
+        return int(timeframe[:-1]) * 60 * 24 * 30
+    else:
+        all_timeframes = [timeframe for timeframe in class_iter(timeframes)]
+        raise InvalidTimeframe(
+            f'Timeframe "{timeframe}" is invalid. Supported timeframes are {", ".join(all_timeframes)}.')
 
     dic = {
         timeframes.MINUTE_1: 1,

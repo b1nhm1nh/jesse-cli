@@ -71,6 +71,24 @@ def install_routes() -> None:
     # 1m must be present at all times
     considering_timeframes.add('1m')
 
+    # CTF Hack
+    ctf_candles = set()
+    ctf_exchanges = set()
+    ctf_symbols = set()
+    ctf_timeframes = set()
+
+    for e in router.ctf_candles:
+        ctf_candles.add((e[0], e[1]))
+        ctf_exchanges.add(e[0])
+        ctf_symbols.add(e[1])
+        ctf_timeframes.add(e[2])
+
+    config['app']['ctf_candles'] = tuple(ctf_candles)
+    config['app']['ctf_exchanges'] = tuple(ctf_exchanges)
+    config['app']['ctf_symbols'] = tuple(ctf_symbols)
+    config['app']['ctf_timeframes'] = tuple(ctf_timeframes)
+
+
     config['app']['considering_candles'] = tuple(considering_candles)
     config['app']['considering_exchanges'] = tuple(considering_exchanges)
     config['app']['considering_symbols'] = tuple(considering_symbols)

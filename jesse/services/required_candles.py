@@ -26,7 +26,10 @@ def load_required_candles(exchange: str, symbol: str, start_date_str: str, finis
     if finish_date > arrow.utcnow().int_timestamp * 1000:
         raise ValueError('Can\'t backtest the future!')
 
-    max_timeframe = jh.max_timeframe(config['app']['considering_timeframes'])
+    # CTF Hack
+    # include CTF timeframes in backtest - optimize mode
+    max_timeframe = max(jh.max_timeframe(config['app']['considering_timeframes']) , jh.max_timeframe(config['app']['ctf_timeframes']))
+
     short_candles_count = jh.get_config('env.data.warmup_candles_num', 210) * jh.timeframe_to_one_minutes(max_timeframe)
     pre_finish_date = start_date - 60_000
     pre_start_date = pre_finish_date - short_candles_count * 60_000
@@ -116,19 +119,33 @@ def inject_required_candles_to_store(candles: np.ndarray, exchange: str, symbol:
                 continue
 
             num = jh.timeframe_to_one_minutes(timeframe)
-
-            if (i + 1) % num == 0:
+            #CTF HACK
+            need_reset = False
+            if num < 1440 and 1440 % num != 0:
+                need_reset = True
+            k = (i + 1) % 1440
+            if need_reset and k == 0 and i > 1 and i - (1440 % num - 1) != (i + 1):
                 generated_candle = generate_candle_from_one_minutes(
                     timeframe,
-                    candles[(i - (num - 1)):(i + 1)],
-                    True
-                )
+                    candles[(i - (1440 % num - 1)):(i + 1)],
+                    True)
+                store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                            with_generation=False)
+                # print(f"inject_required_candles_to_store: short candle k = {k} - i = {i} ts ={generated_candle[0]}")
+                # print(f"Short candle ={generated_candle}")
+            else:
+                if k % num  == 0:
+                    generated_candle = generate_candle_from_one_minutes(
+                        timeframe,
+                        candles[(i - (num - 1)):(i + 1)],
+                        True
+                    )
 
-                store.candles.add_candle(
-                    generated_candle,
-                    exchange,
-                    symbol,
-                    timeframe,
-                    with_execution=False,
-                    with_generation=False
-                )
+                    store.candles.add_candle(
+                        generated_candle,
+                        exchange,
+                        symbol,
+                        timeframe,
+                        with_execution=False,
+                        with_generation=False
+                    )

@@ -59,6 +59,7 @@ def inject_local_routes() -> None:
 
     router.set_routes(local_router.routes)
     router.set_extra_candles(local_router.extra_candles)
+    router.set_ctf_candles(local_router.ctf_candles)
 
 
 # inject local files

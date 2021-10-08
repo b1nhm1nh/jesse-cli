@@ -40,7 +40,10 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
 
     # initiate candle store
     store.candles.init_storage(5000)
-
+    # config['app']['considering_candles'] += config['app']['ctf_candles']
+    # config['app']['considering_exchanges'] += config['app']['ctf_exchanges']
+    # config['app']['considering_symbols'] += config['app']['ctf_symbols']
+    config['app']['considering_timeframes'] += config['app']['ctf_timeframes']
     # load historical candles
     if candles is None:
         print('loading candles...')
@@ -287,12 +290,33 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
                     count = jh.timeframe_to_one_minutes(timeframe)
                     # until = count - ((i + 1) % count)
 
-                    if (i + 1) % count == 0:
+                    # if (i + 1) % count == 0:
+                    #     generated_candle = generate_candle_from_one_minutes(
+                    #         timeframe,
+                    #         candles[j]['candles'][(i - (count - 1)):(i + 1)])
+                    #     store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                    #                              with_generation=False)
+                    # Custom Timeframe hack, must reset candle at 07:00 new day
+                    k = (i + 1) % 1440  
+                    # Last candle of the day, it's not a full candle 
+                    # print (f"K {k} count {count} i={i}")
+                    if k == 0 and i > 1 and i - (1440 % count - 1) != (i + 1):
                         generated_candle = generate_candle_from_one_minutes(
                             timeframe,
-                            candles[j]['candles'][(i - (count - 1)):(i + 1)])
+                            candles[j]['candles'][(i - (1440 % count - 1)):(i + 1)],
+                            True)
                         store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
                                                  with_generation=False)
+                        # print(f"Generating short candle k = {k} - i = {i} ts ={generated_candle[0]}")
+                        # print(f"Short candle ={generated_candle}")
+                    else:
+                        if (k) % count == 0:
+                            generated_candle = generate_candle_from_one_minutes(
+                                timeframe,
+                                candles[j]['candles'][(i - (count - 1)):(i + 1)])
+                            store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                    with_generation=False)
+                            # print(f"Generating normal candle k = {k} - i = {i} ts ={generated_candle[0]}")
 
             # update progressbar
             if not jh.is_debugging() and not jh.should_execute_silently() and i % 60 == 0:
@@ -304,12 +328,23 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
                 # 1m timeframe
                 if r.timeframe == timeframes.MINUTE_1:
                     r.strategy._execute()
-                elif (i + 1) % count == 0:
-                    # print candle
-                    if jh.is_debuggable('trading_candles'):
-                        print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
-                                     r.symbol)
-                    r.strategy._execute()
+                # elif (i + 1) % count == 0:
+                #     # print candle
+                #     if jh.is_debuggable('trading_candles'):
+                #         print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                #                      r.symbol)
+                #     r.strategy._execute()
+                else:
+                    k = (i + 1) % 1440 
+                    if (k == 0 and i > 1) or (k % count == 0):
+                        # print candle
+                        
+                        # if (k == 0 and i >= 1440):
+                        #     print(f"Reseted candle k = {k} - i = {i}")
+                        if jh.is_debuggable('trading_candles'):
+                            print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                                        r.symbol)
+                        r.strategy._execute()               
 
             # now check to see if there's any MARKET orders waiting to be executed
             store.orders.execute_pending_market_orders()

@@ -95,6 +95,12 @@ class CandlesState:
                 # ex: 1440 / 60 + 1 (reserve one for forming candle)
                 total_bigger_timeframe = int((bucket_size / jh.timeframe_to_one_minutes(timeframe)) + 1)
                 self.storage[key] = DynamicNumpyArray((total_bigger_timeframe, 6))
+            # CTF Hack
+            for timeframe in config['app']['ctf_timeframes']:
+                key = jh.key(exchange, symbol, timeframe)
+                # ex: 1440 / 60 + 1 (reserve one for forming candle)
+                total_bigger_timeframe = int((bucket_size / jh.timeframe_to_one_minutes(timeframe)) + 1)
+                self.storage[key] = DynamicNumpyArray((total_bigger_timeframe, 6))
 
     def add_candle(
             self,
@@ -153,6 +159,8 @@ class CandlesState:
             # regenerate other timeframes
             if with_generation and timeframe == '1m':
                 self.generate_bigger_timeframes(candle, exchange, symbol, with_execution)
+                # CTF Hack
+                # self.generate_ctf_bigger_timeframes(candle, exchange, symbol, with_execution)
 
         # past candles will be ignored (dropped)
         elif candle[0] < arr[-1][0]:
@@ -176,6 +184,11 @@ class CandlesState:
         if jh.now() > current_candle[0] + 60_000:
             new_candle = self._generate_empty_candle_from_previous_candle(current_candle)
             self.add_candle(new_candle, exchange, symbol, '1m')
+        # if jh.now() > current_candle[0] + 60_000:
+        #     while jh.now() > current_candle[0] + 60_000:
+        #         new_candle = self._generate_empty_candle_from_previous_candle(current_candle)
+        #         self.add_candle(new_candle, exchange, symbol, '1m')
+        #         current_candle = self.get_current_candle(exchange, symbol, '1m')
 
         # update position's current price
         self.update_position(exchange, symbol, trade['price'])
@@ -271,6 +284,15 @@ class CandlesState:
                          with_generation: bool = True) -> None:
         for c in candles:
             self.add_candle(c, exchange, symbol, timeframe, with_execution=False, with_generation=with_generation, with_skip=False)
+        # CTF Hack
+        if jh.is_live() and timeframe == '1m':
+            print("Generating CTF candles")
+            self.generate_warmup_ctf_candle(exchange, symbol)
+            # self.mark_all_as_initiated
+            config['app']['considering_candles'] += config['app']['ctf_candles']
+            config['app']['considering_exchanges'] += config['app']['ctf_exchanges']
+            config['app']['considering_symbols'] += config['app']['ctf_symbols']
+            config['app']['considering_timeframes'] += config['app']['ctf_timeframes']
 
     def forming_estimation(self, exchange: str, symbol: str, timeframe: str) -> tuple:
         long_key = jh.key(exchange, symbol, timeframe)
@@ -279,6 +301,11 @@ class CandlesState:
         current_1m_count = len(self.get_storage(exchange, symbol, '1m'))
 
         dif = current_1m_count % required_1m_to_complete_count
+        # print(f'lk {long_key} - sk {short_key} -t {required_1m_to_complete_count} - c {current_1m_count} - dif {dif}')
+        # CTF, dif reset at 00:00
+        if current_1m_count % 1440  == 0:
+            dif = 0
+        # print(f'-lk {long_key} - sk {short_key} -t {required_1m_to_complete_count} - c {current_1m_count} - dif {dif}')
         return dif, long_key, short_key
 
     # # # # # # # # #
@@ -336,7 +363,10 @@ class CandlesState:
         short_count = len(self.get_storage(exchange, symbol, '1m'))
 
         # complete candle
-        if dif != 0:
+        # CTF Hack: Reset Candle at of
+        # i_timeframe = jh.timeframe_to_one_minutes(timeframe)
+        if (short_count % 1440 == 0 and short_count > 0) and dif != 0:
+        # if dif != 0:
             return generate_candle_from_one_minutes(
                 timeframe, self.storage[short_key][short_count - dif:short_count],
                 True
@@ -345,3 +375,80 @@ class CandlesState:
             return np.zeros((0, 6))
         else:
             return self.storage[long_key][-1]
+
+    # CTF Hack
+    def generate_warmup_ctf_candle(self, exchange: str, symbol: str):
+        candles = self.get_storage(exchange, symbol, '1m')
+        length = len(candles)
+        # jh.dd(length)
+        print(f"Generating total = {length} ctf candles")
+        for i in range(length):
+            # generate and add candles for bigger timeframes
+            for timeframe in config['app']['ctf_timeframes']:
+                # for 1m, no work is needed
+                if timeframe == '1m':
+                    continue
+                
+                dif, long_key, short_key = self.forming_estimation(exchange, symbol, timeframe)
+
+                count = jh.timeframe_to_one_minutes(timeframe)
+
+                # Custom Timeframe hack, must reset candle at 07:00 new day
+                k = i + 1
+                if count < 1440:
+                    k = (i + 1) % 1440
+                # Last candle of the day, it's not a full candle 
+                if k == 0 and i > 1 and i - (1440 % count - 1) != (i + 1):
+                    # print(f"Generating short candle k = {k} - i = {i} len = {1440 % count} ts ={generated_candle[0]} timeframe = {timeframe}")
+                    generated_candle = generate_candle_from_one_minutes(
+                        timeframe,
+                        self.storage[short_key][i - (1440 % count - 1):(i + 1)],
+                        True)
+                    self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                with_generation=False)
+                else:
+                    # full candle, normal generation 
+                    if (k) % count == 0:
+                        # print(f"Generating normal candle k = {k} - i = {i} ts ={generated_candle[0]} timeframe = {timeframe}")
+                        generated_candle = generate_candle_from_one_minutes(
+                            timeframe,
+                            self.storage[short_key][(i - (count - 1)):(i + 1)])
+                        self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                with_generation=False)
+        print(f"Generated {length} candles")
+
+    # Generate candles from one minute data in realtime
+    def generate_ctf_bigger_timeframes(self, candle: np.ndarray, exchange: str, symbol: str, with_execution: bool) -> None:
+        if not jh.is_live():
+            return
+
+        for timeframe in config['app']['ctf_timeframes']:
+            # skip '1m'
+            if timeframe == '1m':
+                continue
+
+            last_candle = self.get_current_candle(exchange, symbol, timeframe)
+            print(f"last_candle = {last_candle}")
+            generate_from_count = int((candle[0] - last_candle[0]) / 60_000)
+            print(f"generate_from_count = {generate_from_count}")
+            short_candles = self.get_candles(exchange, symbol, '1m')[-1 - generate_from_count:]
+            print(f"short_candles = {short_candles}")
+
+            if len(short_candles) == 0:
+                raise ValueError(
+                    f'No candles were passed. More info:'
+                    f'\nexchange:{exchange}, symbol:{symbol}, timeframe:{timeframe}, generate_from_count:{generate_from_count}'
+                    f'\nlast_candle\'s timestamp: {last_candle[0]}'
+                    f'\ncurrent timestamp: {jh.now()}'
+                )
+
+            # update latest candle
+            generated_candle = generate_candle_from_one_minutes(
+                timeframe,
+                short_candles,
+                accept_forming_candles=True
+            )
+
+            self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution, with_generation=False)
+
+

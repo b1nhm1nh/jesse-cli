@@ -90,9 +90,17 @@ def candles() -> List[List[str]]:
             'timeframe': e[2]
         })
 
-    # headers
-    array.append(['exchange-symbol-timeframe', 'timestamp', 'open', 'close', 'high', 'low'])
+    # add ctf_routes
+    for e in router.ctf_candles:
+        candle_keys.append({
+            'exchange': e[0],
+            'symbol': e[1],
+            'timeframe': e[2]
+        })
+        
 
+    # headers
+    array.append(['CTF exchange-symbol-timeframe', 'timestamp', 'open', 'close', 'high', 'low'])
     for k in candle_keys:
         try:
             current_candle = store.candles.get_current_candle(k['exchange'], k['symbol'], k['timeframe'])

@@ -40,9 +40,7 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
 
     # initiate candle store
     store.candles.init_storage(5000)
-    # config['app']['considering_candles'] += config['app']['ctf_candles']
-    # config['app']['considering_exchanges'] += config['app']['ctf_exchanges']
-    # config['app']['considering_symbols'] += config['app']['ctf_symbols']
+	# CTF Hack
     config['app']['considering_timeframes'] += config['app']['ctf_timeframes']
     # load historical candles
     if candles is None:

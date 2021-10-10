@@ -184,11 +184,6 @@ class CandlesState:
         if jh.now() > current_candle[0] + 60_000:
             new_candle = self._generate_empty_candle_from_previous_candle(current_candle)
             self.add_candle(new_candle, exchange, symbol, '1m')
-        # if jh.now() > current_candle[0] + 60_000:
-        #     while jh.now() > current_candle[0] + 60_000:
-        #         new_candle = self._generate_empty_candle_from_previous_candle(current_candle)
-        #         self.add_candle(new_candle, exchange, symbol, '1m')
-        #         current_candle = self.get_current_candle(exchange, symbol, '1m')
 
         # update position's current price
         self.update_position(exchange, symbol, trade['price'])
@@ -303,8 +298,8 @@ class CandlesState:
         dif = current_1m_count % required_1m_to_complete_count
         # print(f'lk {long_key} - sk {short_key} -t {required_1m_to_complete_count} - c {current_1m_count} - dif {dif}')
         # CTF, dif reset at 00:00
-        if current_1m_count % 1440  == 0:
-            dif = 0
+        # if current_1m_count % 1440  == 0:
+        #    dif = 0
         # print(f'-lk {long_key} - sk {short_key} -t {required_1m_to_complete_count} - c {current_1m_count} - dif {dif}')
         return dif, long_key, short_key
 

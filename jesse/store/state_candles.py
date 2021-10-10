@@ -365,8 +365,8 @@ class CandlesState:
         # complete candle
         # CTF Hack: Reset Candle at of
         # i_timeframe = jh.timeframe_to_one_minutes(timeframe)
-        if (short_count % 1440 == 0 and short_count > 0) and dif != 0:
-        # if dif != 0:
+        # if (short_count % 1440 == 0 and short_count > 0) and dif != 0:
+        if dif != 0:
             return generate_candle_from_one_minutes(
                 timeframe, self.storage[short_key][short_count - dif:short_count],
                 True

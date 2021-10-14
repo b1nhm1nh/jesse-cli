@@ -39,12 +39,8 @@ class CandlesState:
                 exchange, symbol = c[0], c[1]
                 current_candle = self.get_current_candle(exchange, symbol, '1m')
 
-                # TODO: debugging
-                if current_candle[0] == 60_000:
-                    logger.error(
-                        '[REPORT TO Saleh for debugging please!] current_candle[0] is being zero but got fixed. more info:\n '
-                        f'current_candle: {current_candle[0]}, {current_candle[1]}, {current_candle[2]}, {current_candle[3]}, {current_candle[4]}, {current_candle[5]}'
-                    )
+                # fix for for a bug
+                if current_candle[0] <= 60_000:
                     continue
 
                 if jh.now() > current_candle[0] + 60_000:
@@ -110,6 +106,11 @@ class CandlesState:
             # make sure it's a complete (and not a forming) candle
             if jh.now_to_timestamp() >= (candle[0] + 60000):
                 store_candle_into_db(exchange, symbol, candle)
+            return
+
+        if candle[0] == 0:
+            if jh.is_debugging():
+                logger.error("DEBUGGING-VALUE: please report to Saleh: candle[0] is zero")
             return
 
         arr: DynamicNumpyArray = self.get_storage(exchange, symbol, timeframe)
@@ -230,9 +231,6 @@ class CandlesState:
                     f'generate_from_count cannot be negative! '
                     f'generate_from_count:{generate_from_count}, candle[0]:{candle[0]}, '
                     f'last_candle[0]:{last_candle[0]}, current_1m:{current_1m[0]}, number_of_candles:{number_of_candles}')
-            else:
-                from jesse.services import logger
-                logger.info(f'generate_from_count: {generate_from_count}')
 
             if len(short_candles) == 0:
                 raise ValueError(

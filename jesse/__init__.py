@@ -282,6 +282,7 @@ def backtest(start_date: str, finish_date: str, debug: bool, csv: bool, json: bo
     """
     validate_cwd()
 
+
     from jesse.config import config
     config['app']['trading_mode'] = 'backtest'
 
@@ -300,8 +301,74 @@ def backtest(start_date: str, finish_date: str, debug: bool, csv: bool, json: bo
             config['env']['exchanges'][e]['fee'] = 0
             get_exchange(e).fee = 0
 
+    # #Profiler Hack
+    # import cProfile, pstats
+    # profiler = cProfile.Profile()
+    # profiler.enable()
+
     backtest_mode.run(start_date, finish_date, chart=chart, tradingview=tradingview, csv=csv,
                       json=json, full_reports=full_reports)
+
+    # profiler.disable()
+    # stats = pstats.Stats(profiler).sort_stats('cumtime')
+    # stats.print_stats()
+
+    db.close_connection()
+
+@cli.command()
+@click.argument('start_date', required=True, type=str)
+@click.argument('finish_date', required=True, type=str)
+@click.option('--debug/--no-debug', default=False,
+              help='Displays logging messages instead of the progressbar. Used for debugging your strategy.')
+@click.option('--csv/--no-csv', default=False,
+              help='Outputs a CSV file of all executed trades on completion.')
+@click.option('--json/--no-json', default=False,
+              help='Outputs a JSON file of all executed trades on completion.')
+@click.option('--fee/--no-fee', default=True,
+              help='You can use "--no-fee" as a quick way to set trading fee to zero.')
+@click.option('--chart/--no-chart', default=False,
+              help='Generates charts of daily portfolio balance and assets price change. Useful for a visual comparision of your portfolio against the market.')
+@click.option('--tradingview/--no-tradingview', default=False,
+              help="Generates an output that can be copy-and-pasted into tradingview.com's pine-editor too see the trades in their charts.")
+@click.option('--full-reports/--no-full-reports', default=False,
+              help="Generates QuantStats' HTML output with metrics reports like Sharpe ratio, Win rate, Volatility, etc., and batch plotting for visualizing performance, drawdowns, rolling statistics, monthly returns, etc.")
+def backtest2(start_date: str, finish_date: str, debug: bool, csv: bool, json: bool, fee: bool, chart: bool,
+             tradingview: bool, full_reports: bool) -> None:
+    """
+    backtest2 mode. Enter in "YYYY-MM-DD" "YYYY-MM-DD"
+    """
+    validate_cwd()
+
+
+    from jesse.config import config
+    config['app']['trading_mode'] = 'backtest'
+
+    register_custom_exception_handler()
+
+    from jesse.services import db
+    from jesse.modes import backtest2_mode
+    from jesse.services.selectors import get_exchange
+
+    # debug flag
+    config['app']['debug_mode'] = debug
+
+    # fee flag
+    if not fee:
+        for e in config['app']['trading_exchanges']:
+            config['env']['exchanges'][e]['fee'] = 0
+            get_exchange(e).fee = 0
+
+    # #Profiler Hack
+    # import cProfile, pstats
+    # profiler = cProfile.Profile()
+    # profiler.enable()
+
+    backtest2_mode.run(start_date, finish_date, chart=chart, tradingview=tradingview, csv=csv,
+                      json=json, full_reports=full_reports)
+
+    # profiler.disable()
+    # stats = pstats.Stats(profiler).sort_stats('cumtime')
+    # stats.print_stats()
 
     db.close_connection()
 

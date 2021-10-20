@@ -236,8 +236,10 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
             # add candles
             for j in candles:
 
+                if i-skip != 0:
+                    _get_fixed_jumped_candle(candles[j]['candles'][i - skip - 1], candles[j]['candles'][i - skip])  
                 short_candles = candles[j]['candles'][i - skip: i]
-                # remove previous_short_candle fix
+
                 exchange = candles[j]['exchange']
                 symbol = candles[j]['symbol']
 
@@ -371,15 +373,11 @@ def _get_fixed_jumped_candle(previous_candle: np.ndarray, candle: np.ndarray) ->
     :param previous_candle: np.ndarray
     :param candle: np.ndarray
     """
-    if previous_candle[2] < candle[1]:
-        candle[1] = previous_candle[2]
-        candle[4] = min(previous_candle[2], candle[4])
-    elif previous_candle[2] > candle[1]:
-        candle[1] = previous_candle[2]
-        candle[3] = max(previous_candle[2], candle[3])
+    candle[1] = previous_candle[2]
+    candle[4] = min(previous_candle[2], candle[4])
+    candle[3] = max(previous_candle[2], candle[3])
 
     return candle
-
 
 def _skip_n_candles(candles, max_skip: int, i: int) -> int:
     """

@@ -8,11 +8,13 @@ from datetime import datetime, timezone
 
 class Bitstamp(CandleExchange):
     def __init__(self) -> None:
+        from jesse.modes.import_candles_mode.drivers.coinbase import Coinbase
+
         super().__init__(
             name='Bitstamp',
             count=1000,
             rate_limit_per_second=1,
-            backup_exchange_class=Bitfinex
+            backup_exchange_class=Coinbase
         )
 
     def get_starting_time(self, symbol: str) -> int:

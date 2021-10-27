@@ -1,4 +1,3 @@
-from jesse.modes.import_candles_mode.drivers import bitstamp
 import requests
 
 import jesse.helpers as jh
@@ -10,6 +9,7 @@ class Bitfinex(CandleExchange):
     def __init__(self) -> None:
         # import here instead of the top of the file to prevent possible the circular imports issue
         from jesse.modes.import_candles_mode.drivers.coinbase import Coinbase
+        from jesse.modes.import_candles_mode.drivers.bitstamp import Bitstamp
 
         super().__init__(
             name='Bitfinex',
@@ -25,7 +25,7 @@ class Bitfinex(CandleExchange):
 
         # hard-code few common symbols
         if symbol == 'BTC-USD':
-            return jh.date_to_timestamp('2015-08-01')
+            return jh.date_to_timestamp('2015-01-01')
         elif symbol == 'ETH-USD':
             return jh.date_to_timestamp('2016-01-01')
 

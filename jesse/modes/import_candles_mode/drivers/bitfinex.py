@@ -1,3 +1,4 @@
+from jesse.modes.import_candles_mode.drivers import bitstamp
 import requests
 
 import jesse.helpers as jh
@@ -14,7 +15,7 @@ class Bitfinex(CandleExchange):
             name='Bitfinex',
             count=1440,
             rate_limit_per_second=1,
-            backup_exchange_class=Coinbase
+            backup_exchange_class=Bitstamp
         )
 
         self.endpoint = 'https://api-pub.bitfinex.com/v2/candles'

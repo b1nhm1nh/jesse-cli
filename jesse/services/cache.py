@@ -62,9 +62,12 @@ class Cache:
         if item['expire_at'] is not None:
             item['expire_at'] = time() + item['expire_seconds']
             self._update_db()
-
-        with open(item['path'], 'rb') as f:
-            return pickle.load(f)
+        # BM Hack: catch the case where the file is missing
+        try:
+            with open(item['path'], 'rb') as f:
+                return pickle.load(f)
+        except OSError as e:
+            return None
 
     def _update_db(self) -> None:
         # store/update database

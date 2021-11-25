@@ -373,6 +373,10 @@ def key(exchange: str, symbol: str, timeframe: str = None):
 def max_timeframe(timeframes_list: list) -> str:
     from jesse.enums import timeframes
 
+    if timeframes.WEEK_1 in timeframes_list:
+        return timeframes.WEEK_1
+    if timeframes.DAY_3 in timeframes_list:
+        return timeframes.DAY_3
     if timeframes.DAY_1 in timeframes_list:
         return timeframes.DAY_1
     if timeframes.HOUR_12 in timeframes_list:
@@ -696,9 +700,29 @@ def _print_error(msg: str) -> None:
     print(color(msg, 'red'))
 
 
+#convert timeframe string to int
+# end with 'm' for minutes
+# end with 'h' for hours
+# end with 'D' for days
+# end with 'w' for weeks
+# end with 'M' for months    
 def timeframe_to_one_minutes(timeframe: str) -> int:
     from jesse.enums import timeframes
     from jesse.exceptions import InvalidTimeframe
+    if timeframe.endswith('m'):
+        return int(timeframe[:-1])
+    elif timeframe.endswith('h'):
+        return int(timeframe[:-1]) * 60
+    elif timeframe.endswith('D'):
+        return int(timeframe[:-1]) * 60 * 24
+    elif timeframe.endswith('w'):
+        return int(timeframe[:-1]) * 60 * 24 * 7
+    elif timeframe.endswith('M'):
+        return int(timeframe[:-1]) * 60 * 24 * 30
+    else:
+        all_timeframes = [timeframe for timeframe in class_iter(timeframes)]
+        raise InvalidTimeframe(
+            f'Timeframe "{timeframe}" is invalid. Supported timeframes are {", ".join(all_timeframes)}.')
 
     dic = {
         timeframes.MINUTE_1: 1,
@@ -715,6 +739,8 @@ def timeframe_to_one_minutes(timeframe: str) -> int:
         timeframes.HOUR_8: 60 * 8,
         timeframes.HOUR_12: 60 * 12,
         timeframes.DAY_1: 60 * 24,
+        timeframes.DAY_3: 60 * 24 * 3,
+        timeframes.WEEK_1: 60 * 24 * 7,
     }
 
     try:

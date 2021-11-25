@@ -319,10 +319,10 @@ class Genetics(ABC):
                         raise ValueError('self.population_size cannot be less than 10')
 
                     for j in range(number_of_ind_to_show):
-                        log = f"win-rate: {self.population[j]['training_log']['win-rate']}%, total: {self.population[j]['training_log']['total']}, PNL: {self.population[j]['training_log']['PNL']}% || win-rate: {self.population[j]['testing_log']['win-rate']}%, total: {self.population[j]['testing_log']['total']}, PNL: {self.population[j]['testing_log']['PNL']}%"
-                        if self.population[j]['testing_log']['PNL'] is not None and self.population[j]['training_log'][
-                            'PNL'] > 0 and self.population[j]['testing_log'][
-                            'PNL'] > 0:
+                        log = f"win_rate: {round(self.population[j]['training_log']['win_rate'], 2) if self.population[j]['training_log']['win_rate'] else None}, total: {self.population[j]['training_log']['total']}, net_profit_percentage: {round(self.population[j]['training_log']['net_profit_percentage'], 2) if self.population[j]['training_log']['net_profit_percentage'] else None }% || win_rate: {round(self.population[j]['testing_log']['win_rate'], 2) if self.population[j]['testing_log']['win_rate'] else None}, total: {self.population[j]['testing_log']['total']}, net_profit_percentage: {round(self.population[j]['testing_log']['net_profit_percentage'], 2) if self.population[j]['testing_log']['net_profit_percentage'] else None}%"
+                        if self.population[j]['testing_log']['net_profit_percentage'] is not None and self.population[j]['training_log'][
+                            'net_profit_percentage'] > 0 and self.population[j]['testing_log'][
+                            'net_profit_percentage'] > 0:
                             log = jh.style(log, 'bold')
                         if jh.is_debugging():
                             fittest_list.append(
@@ -440,7 +440,7 @@ class Genetics(ABC):
             txt += '\n'
 
             for i in range(30):
-                log = f"win-rate: {self.population[i]['training_log']['win-rate']} %, total: {self.population[i]['training_log']['total']}, PNL: {self.population[i]['training_log']['PNL']} % || win-rate: {self.population[i]['testing_log']['win-rate']} %, total: {self.population[i]['testing_log']['total']}, PNL: {self.population[i]['testing_log']['PNL']} %"
+                log = f"win_rate: {round(self.population[i]['training_log']['win_rate'], 2) if self.population[i]['training_log']['win_rate'] else None}, total: {self.population[i]['training_log']['total']}, net_profit_percentage: {round(self.population[i]['training_log']['net_profit_percentage'], 2) if self.population[i]['training_log']['net_profit_percentage'] else None}% || win_rate: {round(self.population[i]['testing_log']['win_rate'], 2) if self.population[i]['testing_log']['win_rate'] else None}, total: {self.population[i]['testing_log']['total']}, net_profit_percentage: {round(self.population[i]['testing_log']['net_profit_percentage'], 2) if self.population[i]['testing_log']['net_profit_percentage'] else None}%"
 
                 txt += '\n'
                 txt += f"{i + 1} ==  {self.population[i]['dna']}  ==  {self.population[i]['fitness']}  ==  {log}"
@@ -457,9 +457,9 @@ class Genetics(ABC):
             with open(path, 'a', newline='', encoding="utf-8") as outfile:
                 if not exists:
                     # header of CSV file
-                    df.to_csv(outfile, header=True, index=False, encoding='utf-8')
+                    df.to_csv(outfile, header=True, index=False, encoding='utf-8', sep ='\t')
 
-                df.to_csv(outfile, header=False, index=False, encoding='utf-8')
+                df.to_csv(outfile, header=False, index=False, encoding='utf-8', sep ='\t')
 
         if self.options['json']:
             path = f'storage/genetics/json/{study_name}.json'

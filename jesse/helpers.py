@@ -268,18 +268,17 @@ def get_config(keys: str, default: Any = None) -> Any:
 def get_strategy_class(strategy_name: str):
     from pydoc import locate
 
-    if is_unit_testing():
-        path = sys.path[0]
-        # live plugin
-        if path.endswith('jesse-live'):
-            strategy_dir = f'tests.strategies.{strategy_name}.{strategy_name}'
-        # main framework
-        else:
-            strategy_dir = f'jesse.strategies.{strategy_name}.{strategy_name}'
-
-        return locate(strategy_dir)
-    else:
+    if not is_unit_testing():
         return locate(f'strategies.{strategy_name}.{strategy_name}')
+    path = sys.path[0]
+    # live plugin
+    if path.endswith('jesse-live'):
+        strategy_dir = f'tests.strategies.{strategy_name}.{strategy_name}'
+    # main framework
+    else:
+        strategy_dir = f'jesse.strategies.{strategy_name}.{strategy_name}'
+
+    return locate(strategy_dir)
 
 
 def insecure_hash(msg: str) -> str:
@@ -369,10 +368,6 @@ def key(exchange: str, symbol: str, timeframe: str = None):
 def max_timeframe(timeframes_list: list) -> str:
     from jesse.enums import timeframes
 
-    if timeframes.WEEK_1 in timeframes_list:
-        return timeframes.WEEK_1
-    if timeframes.DAY_3 in timeframes_list:
-        return timeframes.DAY_3
     if timeframes.DAY_1 in timeframes_list:
         return timeframes.DAY_1
     if timeframes.HOUR_12 in timeframes_list:
@@ -536,8 +531,8 @@ def prepare_qty(qty: float, side: str) -> float:
         raise ValueError(f'{side} is not a valid input')
 
 
-def python_version() -> float:
-    return float(f'{sys.version_info[0]}.{sys.version_info[1]}')
+def python_version() -> tuple:
+    return sys.version_info[:2]
 
 
 def quote_asset(symbol: str) -> str:
@@ -734,8 +729,6 @@ def timeframe_to_one_minutes(timeframe: str) -> int:
         timeframes.HOUR_8: 60 * 8,
         timeframes.HOUR_12: 60 * 12,
         timeframes.DAY_1: 60 * 24,
-        timeframes.DAY_3: 60 * 24 * 3,
-        timeframes.WEEK_1: 60 * 24 * 7,
     }
 
     try:

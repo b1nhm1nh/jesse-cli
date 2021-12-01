@@ -19,7 +19,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 from celery import Celery
 
 # Python version validation.
-if jh.python_version() < 3.7:
+if jh.python_version() < (3,7):
     print(
         jh.color(
             f'Jesse requires Python version above 3.7. Yours is {jh.python_version()}',
@@ -90,7 +90,8 @@ def register_custom_exception_handler() -> None:
     from jesse import exceptions
 
     log_format = "%(message)s"
-    os.makedirs('storage/logs', exist_ok=True)
+
+    os.makedirs('./storage/logs', exist_ok=True)
 
     if jh.is_livetrading():
         logging.basicConfig(filename='storage/logs/live-trade.txt', level=logging.INFO,
@@ -173,7 +174,7 @@ def register_custom_exception_handler() -> None:
     sys.excepthook = handle_exception
 
     # other threads
-    if jh.python_version() >= 3.8:
+    if jh.python_version() >= (3,8):
         def handle_thread_exception(args) -> None:
             if args.exc_type == SystemExit:
                 return
@@ -396,10 +397,7 @@ def backtest2(start_date: str, finish_date: str, debug: bool, csv: bool, json: b
     '--debug/--no-debug', default=False,
     help='Displays detailed logs about the genetics algorithm. Use it if you are interested int he genetics algorithm.'
 )
-@click.option('--csv/--no-csv', default=False, help='Outputs a CSV file of all DNAs on completion.')
-@click.option('--json/--no-json', default=False, help='Outputs a JSON file of all DNAs on completion.')
-def optimize(start_date: str, finish_date: str, optimal_total: int, cpu: int, debug: bool, csv: bool,
-             json: bool) -> None:
+def optimize(start_date: str, finish_date: str, optimal_total: int, cpu: int, debug: bool) -> None:
     """
     tunes the hyper-parameters of your strategy
     """
@@ -414,7 +412,7 @@ def optimize(start_date: str, finish_date: str, optimal_total: int, cpu: int, de
 
     from jesse.modes.optimize_mode import optimize_mode
 
-    optimize_mode(start_date, finish_date, optimal_total, cpu, csv, json)
+    optimize_mode(start_date, finish_date, optimal_total, cpu)
 
 @cli.command()
 @click.argument('start_date', required=True, type=str)
@@ -595,8 +593,6 @@ def make_project(name: str) -> None:
     from jesse.config import config
 
     config['app']['trading_mode'] = 'make-project'
-
-    register_custom_exception_handler()
 
     from jesse.services import project_maker
 

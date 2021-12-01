@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 # also change in version.py
-VERSION = '0.28.1'
+VERSION = '0.29.3'
 DESCRIPTION = "A trading framework for cryptocurrencies"
 
 REQUIRED_PACKAGES = [
@@ -9,15 +9,20 @@ REQUIRED_PACKAGES = [
     'blinker',
     'Click',
     'matplotlib',
+    'mplfinance',
     'newtulipy',
     'numpy',
+    'numpy_groupies',
     'pandas',
     'peewee',
     'psycopg2-binary',
     'pydash',
     'pytest',
+    'PyWavelets',
+    'quantstats',
     'requests',
     'scipy',
+    'statsmodels',
     'TA-Lib',
     'tabulate',
     'timeloop',

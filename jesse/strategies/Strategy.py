@@ -16,6 +16,7 @@ from jesse.services import metrics
 from jesse.services.broker import Broker
 from jesse.store import store
 from jesse.services.cache import cached
+from jesse.services import notifier
 
 
 class Strategy(ABC):
@@ -1037,10 +1038,7 @@ class Strategy(ABC):
             self.trade.qty = order.qty
             self.trade.opened_at = jh.now_to_timestamp()
             self.trade.entry_candle_timestamp = self.current_candle[0]
-        elif role == order_roles.INCREASE_POSITION:
-            self.trade.orders.append(order)
-            self.trade.qty += order.qty
-        elif role == order_roles.REDUCE_POSITION:
+        elif role in [order_roles.INCREASE_POSITION, order_roles.REDUCE_POSITION]:
             self.trade.orders.append(order)
             self.trade.qty += order.qty
         elif role == order_roles.CLOSE_POSITION:
@@ -1087,9 +1085,9 @@ class Strategy(ABC):
                 store_completed_trade_into_db(self.trade)
             self.trade = None
             self.trades_count += 1
-
         if jh.is_livetrading():
             store_order_into_db(order)
+
 
     @property
     def is_long(self) -> bool:
@@ -1195,7 +1193,14 @@ class Strategy(ABC):
 
         if log_type == 'info':
             logger.info(msg)
+
+            if jh.is_live():
+                notifier.notify(msg)
         elif log_type == 'error':
             logger.error(msg)
+
+            if jh.is_live():
+                notifier.notify(msg)
+                notifier.notify_urgently(msg)
         else:
             raise ValueError(f'log_type should be either "info" or "error". You passed {log_type}')

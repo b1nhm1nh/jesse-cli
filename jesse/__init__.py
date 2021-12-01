@@ -1,3 +1,4 @@
+from math import fabs
 import os
 import sys
 # Hide the "FutureWarning: pandas.util.testing is deprecated." caused by empyrical
@@ -8,8 +9,14 @@ import click
 import pkg_resources
 
 import jesse.helpers as jh
+from typing import Dict, Any, Tuple, Union
+from numpy import ndarray
+import arrow
+
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
+from celery import Celery
 
 # Python version validation.
 if jh.python_version() < 3.7:
@@ -66,6 +73,11 @@ def inject_local_routes() -> None:
 if is_jesse_project:
     inject_local_config()
     inject_local_routes()
+
+broker_url = f"redis://{jh.get_config('env.cluster.host')}:{jh.get_config('env.cluster.port')}/{jh.get_config('env.cluster.broker_db')}"
+backend_url = f"redis://{jh.get_config('env.cluster.host')}:{jh.get_config('env.cluster.port')}/{jh.get_config('env.cluster.backend_db')}"
+print(f"{broker_url} {backend_url}")
+app = Celery('jesse',  broker=broker_url, backend=backend_url, worker_prefetch_multiplier=1)
 
 
 def register_custom_exception_handler() -> None:
@@ -404,6 +416,157 @@ def optimize(start_date: str, finish_date: str, optimal_total: int, cpu: int, de
 
     optimize_mode(start_date, finish_date, optimal_total, cpu, csv, json)
 
+@cli.command()
+@click.argument('start_date', required=True, type=str)
+@click.argument('finish_date', required=True, type=str)
+@click.argument('optimal_total', required=True, type=int)
+@click.option(
+    '--cpu', default=0, show_default=True,
+    help='The number of CPU cores that Jesse is allowed to use. If set to 0, it will use as many as is available on your machine.')
+@click.option(
+    '--debug/--no-debug', default=False,
+    help='Displays detailed logs about the genetics algorithm. Use it if you are interested int he genetics algorithm.'
+)
+@click.option('--csv/--no-csv', default=False, help='Outputs a CSV file of all DNAs on completion.')
+@click.option('--json/--no-json', default=False, help='Outputs a JSON file of all DNAs on completion.')
+def optimize2(start_date: str, finish_date: str, optimal_total: int, cpu: int, debug: bool, csv: bool,
+             json: bool) -> None:
+    """
+    tunes the hyper-parameters of your strategy
+    """
+    validate_cwd()
+    from jesse.config import config
+    config['app']['trading_mode'] = 'optimize'
+
+    register_custom_exception_handler()
+
+    # debug flag
+    config['app']['debug_mode'] = debug
+
+    from jesse.modes.optimize2_mode import optimize2_mode
+
+    optimize2_mode(start_date, finish_date, optimal_total, cpu, csv, json)
+
+@cli.command()
+@click.argument('start_date', required=True, type=str)
+@click.argument('finish_date', required=True, type=str)
+@click.argument('optimal_total', required=True, type=int)
+@click.option(
+    '--cpu', default=0, show_default=True,
+    help='The number of CPU cores that Jesse is allowed to use. If set to 0, it will use as many as is available on your machine.')
+@click.option(
+    '--debug/--no-debug', default=False,
+    help='Displays detailed logs about the genetics algorithm. Use it if you are interested int he genetics algorithm.'
+)
+@click.option('--csv/--no-csv', default=False, help='Outputs a CSV file of all DNAs on completion.')
+@click.option('--json/--no-json', default=False, help='Outputs a JSON file of all DNAs on completion.')
+def optimize3(start_date: str, finish_date: str, optimal_total: int, cpu: int, debug: bool, csv: bool,
+             json: bool) -> None:
+    """
+    tunes the hyper-parameters of your strategy
+    """
+    validate_cwd()
+    from jesse.config import config
+    config['app']['trading_mode'] = 'optimize'
+
+    register_custom_exception_handler()
+
+    # debug flag
+    config['app']['debug_mode'] = debug
+
+    from jesse.modes.optimize3_mode import optimize3_mode
+
+    #optimize3_init_worker(start_date, finish_date, optimal_total)
+
+    optimize3_mode(start_date, finish_date, optimal_total, cpu, csv, json)
+
+
+
+########################################
+
+@cli.command()
+@click.argument('start_date', required=True, type=str)
+@click.argument('finish_date', required=True, type=str)
+@click.argument('optimal_total', required=True, type=int)
+@click.option(
+    '--cpu', default=0, show_default=True,
+    help='The number of CPU cores that Jesse is allowed to use. If set to 0, it will use as many as is available on your machine.')
+@click.option(
+    '--debug/--no-debug', default=False,
+    help='Displays detailed logs about the genetics algorithm. Use it if you are interested int he genetics algorithm.'
+)
+@click.option('--csv/--no-csv', default=False, help='Outputs a CSV file of all DNAs on completion.')
+@click.option('--json/--no-json', default=False, help='Outputs a JSON file of all DNAs on completion.')
+def walkforward(start_date: str, finish_date: str, optimal_total: int, cpu: int, debug: bool, csv: bool,
+             json: bool) -> None:
+    """
+    tunes the hyper-parameters of your strategy
+    """
+    validate_cwd()
+    from jesse.config import config
+    config['app']['trading_mode'] = 'optimize'
+
+    register_custom_exception_handler()
+
+    # debug flag
+    config['app']['debug_mode'] = debug
+
+    train_month = 2
+    test_month = 1
+    inc_month = 1
+
+    print (f" {start_date} - {finish_date}")
+
+    a_start_date = arrow.get(start_date, 'YYYY-MM-DD')
+    a_finish_date = arrow.get(finish_date, 'YYYY-MM-DD')
+    i_start_date = a_start_date
+    i_finish_date = i_start_date.shift(months = train_month + test_month)
+
+
+    # from jesse.modes.optimize2_mode import optimize2_mode
+
+    # optimize2_mode(start_date, finish_date, optimal_total, cpu, csv, json)
+
+    from jesse.modes.optimizewf_mode import optimizewf_mode
+
+    optimizewf_mode(start_date, finish_date, optimal_total, cpu, csv, json, train_month, test_month, inc_month)
+
+@app.task
+def init_worker(start_date: str, finish_date: str, optimal_total: int) -> None:
+    """
+    init worker
+    """
+    
+
+    # return os.getcwd()
+    #, cpu_cores: int, csv: bool, json: bool
+    cpu_cores = 1
+    csv = False
+    json = False
+    validate_cwd()
+    from jesse.config import config
+    from jesse.modes.optimize3_mode import optimize3_init_worker
+    config['app']['trading_mode'] = 'optimize'
+
+    register_custom_exception_handler()
+
+    # debug flag
+    config['app']['debug_mode'] = False
+
+    from jesse.modes.optimize3_mode import optimize3_mode
+
+    optimize3_init_worker(start_date, finish_date, optimal_total)
+    #, 1, csv, json)
+    return "Inited"
+
+@app.task
+def run_worker(dna:str) -> None:
+    """
+    run worker
+    """
+    global _test_value
+    from jesse.modes.optimize3_mode import optimize3_run_worker
+    return optimize3_run_worker(dna)
 
 @cli.command()
 @click.argument('name', required=True, type=str)

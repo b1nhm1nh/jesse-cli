@@ -650,15 +650,20 @@ class Strategy(ABC):
             for o in self._take_profit:
                 # validation: make sure take-profit will exit with profit
                 if self.is_long:
-                    if o[1] <= self.position.entry_price:
-                        raise exceptions.InvalidStrategy(
-                            f'take-profit({o[1]}) must be above entry-price({self.position.entry_price}) in a long position'
-                        )
+                   
+                    nope = 0
+                    if o[1] <= self.price: # position.entry_price:
+                        print(f" Long TP {o[1]}")
+                        # raise exceptions.InvalidStrategy(
+                        #     f'take-profit({o[1]}) must be above entry-price({self.position.entry_price}) in a long position'
+                        # )
                 elif self.is_short:
-                    if o[1] >= self.position.entry_price:
-                        raise exceptions.InvalidStrategy(
-                            f'take-profit({o[1]}) must be below entry-price({self.position.entry_price}) in a short position'
-                        )
+                    nope = 0
+                    if o[1] >= self.price: # position.entry_price:
+                        print(f" Short TP {o[1]}")
+                        # raise exceptions.InvalidStrategy(
+                        #     f'take-profit({o[1]}) must be below entry-price({self.position.entry_price}) in a short position'
+                        # )
 
                 # submit take-profit
                 submitted_order: Order = self.broker.reduce_position_at(

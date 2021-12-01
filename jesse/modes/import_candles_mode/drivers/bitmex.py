@@ -25,8 +25,8 @@ class Bitmex(CandleExchange):
         # hard-code few common symbols
         if symbol == 'XBT-USD':
             return jh.date_to_timestamp('2015-09-26')
-        elif symbol == 'ETH-USD':
-            return jh.date_to_timestamp('2016-01-01')
+        elif symbol == 'BETH-USD':
+            return jh.date_to_timestamp('2017-07-26')
 
         # payload = {
         #     'resolution': 1,
@@ -52,12 +52,14 @@ class Bitmex(CandleExchange):
         return 0
 
     def fetch(self, symbol: str, start_timestamp: int) -> list:
-        # since Bitmex API skips candles with "volume=0", we have to send end_timestamp
-        # instead of limit. Therefore, we use limit number to calculate the end_timestamp
         start_timestamp = start_timestamp / 1000
         end_timestamp = start_timestamp + (self.count - 1) * 60
 
         dashless_symbol = jh.dashless_symbol(symbol)
+
+        if symbol == 'ETH-USD':
+            dashless_symbol = '.BETH'
+
 
         payload = {
             'symbol': dashless_symbol,
@@ -66,6 +68,7 @@ class Bitmex(CandleExchange):
             'resolution': 1
         }
 
+        jh.dump(payload)
 
         response = requests.get(
             f"{self.endpoint}/",

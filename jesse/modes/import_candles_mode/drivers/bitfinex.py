@@ -25,7 +25,7 @@ class Bitfinex(CandleExchange):
 
         # hard-code few common symbols
         if symbol == 'BTC-USD':
-            return jh.date_to_timestamp('2015-01-01')
+            return jh.date_to_timestamp('2015-08-01')
         elif symbol == 'ETH-USD':
             return jh.date_to_timestamp('2016-01-01')
 

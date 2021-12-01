@@ -221,7 +221,7 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
 
     # initiate strategies
     min_timeframe = _initialized_strategies(hyperparameters)
-    print(f"Min_tf {min_timeframe}")
+    # print(f"Min_tf {min_timeframe}")
     # add initial balance
     save_daily_portfolio_balance()
 
@@ -373,12 +373,15 @@ def _get_fixed_jumped_candle(previous_candle: np.ndarray, candle: np.ndarray) ->
     :param previous_candle: np.ndarray
     :param candle: np.ndarray
     """
-    candle[1] = previous_candle[2]
-    candle[4] = min(previous_candle[2], candle[4])
-    candle[3] = max(previous_candle[2], candle[3])
+    if previous_candle[2] < candle[1]:
+        candle[1] = previous_candle[2]
+        candle[4] = min(previous_candle[2], candle[4])
+    elif previous_candle[2] > candle[1]:
+        candle[1] = previous_candle[2]
+        candle[3] = max(previous_candle[2], candle[3])
 
     return candle
-
+    
 def _skip_n_candles(candles, max_skip: int, i: int) -> int:
     """
     calculate how many 1 minute candles can be skipped by checking if the next candles

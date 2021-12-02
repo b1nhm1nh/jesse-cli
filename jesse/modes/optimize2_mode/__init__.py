@@ -22,8 +22,7 @@ os.environ['NUMEXPR_MAX_THREADS'] = str(cpu_count())
 
 
 class Optimizer(Genetics):
-    def __init__(self, training_candles: ndarray, testing_candles: ndarray, optimal_total: int, cpu_cores: int, csv: bool,
-                 json: bool, start_date: str, finish_date: str) -> None:
+    def __init__(self, training_candles: ndarray, testing_candles: ndarray, optimal_total: int, cpu_cores: int, start_date: str, finish_date: str) -> None:
         if len(router.routes) != 1:
             raise NotImplementedError('optimize_mode mode only supports one route at the moment')
 
@@ -49,8 +48,6 @@ class Optimizer(Genetics):
                 'symbol': self.symbol,
                 'timeframe': self.timeframe,
                 'strategy_hp': self.strategy_hp,
-                'csv': csv,
-                'json': json,
                 'start_date': start_date,
                 'finish_date': finish_date,
             }
@@ -100,10 +97,10 @@ class Optimizer(Genetics):
         # run backtest simulation
         simulator(self.training_candles, hp)
 
-        training_log = {'win-rate': None, 'total': None,
-                        'PNL': None}
-        testing_log = {'win-rate': None, 'total': None,
-                       'PNL': None}
+        training_data = {'win_rate': None, 'total': None,
+                        'net_profit_percentage': None}
+        testing_data = {'win_rate': None, 'total': None,
+                       'net_profit_percentage': None}
 
         # TODO: some of these have to be dynamic based on how many days it's trading for like for example "total"
         # I'm guessing we should accept "optimal" total from command line
@@ -141,11 +138,7 @@ class Optimizer(Genetics):
                 score = 0.0001
                 # reset store
                 store.reset()
-                return score, training_log, testing_log
-
-            # log for debugging/monitoring
-            training_log = {'win-rate': int(training_data['win_rate'] * 100), 'total': training_data['total'],
-                            'PNL': round(training_data['net_profit_percentage'], 2)}
+                return score, training_data, testing_data
 
             score = total_effect_rate * ratio_normalized
 
@@ -165,12 +158,10 @@ class Optimizer(Genetics):
 
             # run backtest simulation
             simulator(self.testing_candles, hp)
-            testing_data = stats.trades(store.completed_trades.trades, store.app.daily_balance)
 
             # log for debugging/monitoring
             if store.completed_trades.count > 0:
-                testing_log = {'win-rate': int(testing_data['win_rate'] * 100), 'total': testing_data['total'],
-                               'PNL': round(testing_data['net_profit_percentage'], 2)}
+                testing_data = stats.trades(store.completed_trades.trades, store.app.daily_balance)
 
         else:
             score = 0.0001
@@ -178,10 +169,10 @@ class Optimizer(Genetics):
         # reset store
         store.reset()
 
-        return score, training_log, testing_log
+        return score, training_data, testing_data
 
 
-def optimize2_mode(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int, csv: bool, json: bool) -> None:
+def optimize_mode(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int) -> None:
     # clear the screen
     click.clear()
     print('loading candles...')
@@ -196,7 +187,7 @@ def optimize2_mode(start_date: str, finish_date: str, optimal_total: int, cpu_co
     # clear the screen
     click.clear()
 
-    optimizer = Optimizer(training_candles, testing_candles, optimal_total, cpu_cores, csv, json, start_date, finish_date)
+    optimizer = Optimizer(training_candles, testing_candles, optimal_total, cpu_cores, start_date, finish_date)
 
     optimizer.run()
 

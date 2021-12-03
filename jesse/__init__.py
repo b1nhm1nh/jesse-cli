@@ -443,7 +443,7 @@ def optimize2(start_date: str, finish_date: str, optimal_total: int, cpu: int, d
 
     from jesse.modes.optimize2_mode import optimize2_mode
 
-    optimize2_mode(start_date, finish_date, optimal_total, cpu, csv, json)
+    optimize2_mode(start_date, finish_date, optimal_total, cpu)
 
 @cli.command()
 @click.argument('start_date', required=True, type=str)

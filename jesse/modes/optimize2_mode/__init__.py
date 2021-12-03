@@ -172,7 +172,7 @@ class Optimizer(Genetics):
         return score, training_data, testing_data
 
 
-def optimize_mode(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int) -> None:
+def optimize2_mode(start_date: str, finish_date: str, optimal_total: int, cpu_cores: int) -> None:
     # clear the screen
     click.clear()
     print('loading candles...')

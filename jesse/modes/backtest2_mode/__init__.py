@@ -224,6 +224,7 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
         # i is the i'th candle, which means that the first candle is i=1 etc..
 
         while i <= length:
+            # print(f"[i] {i} - [skip]: {skip}- [remainder]: {min_timeframe_remainder}")
             # update time
             store.app.time = first_candles_set[i - 1][0] + 60_000
 
@@ -259,10 +260,18 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
 
                     count = jh.timeframe_to_one_minutes(timeframe)
 
-                    if i % count == 0:
+                    # if i % count == 0:
+                    # CTF Hack
+                    if (i % 1440) % count == 0:
+                        if i % 1440 == 0:
+                            count = 1440 - (1440 // count) * count
+                        _get_fixed_jumped_candle(candles[j]['candles'][i - count - 1], candles[j]['candles'][i - count])  
                         generated_candle = generate_candle_from_one_minutes(
                             timeframe,
-                            candles[j]['candles'][i - count:i])
+                            candles[j]['candles'][i - count:i],
+                            accept_forming_candles=True)
+                        # _get_fixed_jumped_candle(store.candles.get_current_candle(exchange, symbol, timeframe), generated_candle)
+                        
                         store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
                                                  with_generation=False)
 
@@ -275,12 +284,19 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
 
             if i % 1440 == 0:
                 save_daily_portfolio_balance()
+            
+            # CTF Hack
+            # if current candle i + remainder  > 1440% -> next candle is 1440% 
+            if (i + min_timeframe_remainder) // 1440 != (i) // 1440:
+                min_timeframe_remainder = 1440 - (i % 1440)
 
             skip = _skip_n_candles(candles, min_timeframe_remainder, i)
             if skip < min_timeframe_remainder:
                 min_timeframe_remainder -= skip
             elif skip == min_timeframe_remainder:
                 min_timeframe_remainder = min_timeframe
+            # print(f"[after - i] {i} - [skip] {skip}- {min_timeframe_remainder}")
+
             i += skip
 
     _finish_simulation(begin_time_track)
@@ -331,7 +347,8 @@ def _initialized_strategies(hyperparameters: dict = None):
 def _execute_candles(i: int):
     for r in router.routes:
         count = jh.timeframe_to_one_minutes(r.timeframe)
-        if i % count == 0:
+        # CTF hack
+        if (i % 1440) % count == 0:
             # print candle
             if jh.is_debuggable('trading_candles'):
                 print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,

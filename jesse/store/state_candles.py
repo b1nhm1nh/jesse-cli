@@ -354,8 +354,8 @@ class CandlesState:
         dif = current_1m_count % required_1m_to_complete_count
         # print(f'lk {long_key} - sk {short_key} -t {required_1m_to_complete_count} - c {current_1m_count} - dif {dif}')
         # CTF, dif reset at 00:00
-        # if current_1m_count % 1440  == 0:
-        #    dif = 0
+        if current_1m_count % 1440  == 0:
+           dif = 0
         # print(f'-lk {long_key} - sk {short_key} -t {required_1m_to_complete_count} - c {current_1m_count} - dif {dif}')
         return dif, long_key, short_key
 
@@ -415,9 +415,9 @@ class CandlesState:
 
         # complete candle
         # CTF Hack: Reset Candle at of
-        # i_timeframe = jh.timeframe_to_one_minutes(timeframe)
-        # if (short_count % 1440 == 0 and short_count > 0) and dif != 0:
-        if dif != 0:
+        i_timeframe = jh.timeframe_to_one_minutes(timeframe)
+        if (short_count % 1440 == 0 and short_count > 0) and dif != 0:
+        # if dif != 0:
             return generate_candle_from_one_minutes(
                 timeframe, self.storage[short_key][short_count - dif:short_count],
                 True

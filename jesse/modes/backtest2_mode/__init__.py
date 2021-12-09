@@ -266,7 +266,7 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
                         if i % 1440 == 0 and 1440 % count != 0:
                             count = 1440 - (1440 // count) * count
                         _get_fixed_jumped_candle(candles[j]['candles'][i - count - 1], candles[j]['candles'][i - count])  
-                        print(f"{i} - {count}")
+                        # print(f"{i} - {count}")
                         generated_candle = generate_candle_from_one_minutes(
                             timeframe,
                             candles[j]['candles'][i - count:i],

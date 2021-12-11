@@ -1,6 +1,7 @@
 import json
 import os
 import numpy as np
+import peewee
 
 from fastapi.responses import FileResponse
 import jesse.helpers as jh
@@ -48,9 +49,7 @@ def get_candles(exchange: str, symbol: str, timeframe: str):
 
 
 def get_general_info(has_live=False) -> dict:
-
     from jesse.modes.import_candles_mode.drivers import drivers
-    from jesse.services.auth import get_access_token
 
     if has_live:
         from jesse_live.info import SUPPORTED_EXCHANGES_NAMES
@@ -61,15 +60,12 @@ def get_general_info(has_live=False) -> dict:
     exchanges = list(sorted(drivers.keys()))
     strategies_path = os.getcwd() + "/strategies/"
     strategies = list(sorted([name for name in os.listdir(strategies_path) if os.path.isdir(strategies_path + name)]))
-    is_logged_in_to_jesse_trade = get_access_token() is not None
-
 
     return {
         'exchanges': exchanges,
         'live_exchanges': live_exchanges,
         'strategies': strategies,
         'has_live_plugin_installed': has_live,
-        'is_logged_in_to_jesse_trade': is_logged_in_to_jesse_trade,
         'cpu_cores': jh.cpu_cores_count()
     }
 
@@ -80,21 +76,9 @@ def get_config(client_config: dict, has_live=False) -> dict:
 
     from jesse.models.Option import Option
 
-    o = Option.get_or_none(Option.type == 'config')
+    try:
+        o = Option.get(Option.type == 'config')
 
-    # if not found, that means it's the first time. Store in the DB and
-    # then return what was sent from the client side without changing it
-    if o is None:
-        o = Option({
-            'id': jh.generate_unique_id(),
-            'updated_at': jh.now(),
-            'type': 'config',
-            'json': json.dumps(client_config)
-        })
-        o.save(force_insert=True)
-
-        data = client_config
-    else:
         # merge it with client's config (because it could include new keys added),
         # update it in the database, and then return it
         data = jh.merge_dicts(client_config, json.loads(o.json))
@@ -121,6 +105,18 @@ def get_config(client_config: dict, has_live=False) -> dict:
 
         o.updated_at = jh.now()
         o.save()
+    except peewee.DoesNotExist:
+        # if not found, that means it's the first time. Store in the DB and
+        # then return what was sent from the client side without changing it
+        o = Option({
+            'id': jh.generate_unique_id(),
+            'updated_at': jh.now(),
+            'type': 'config',
+            'json': json.dumps(client_config)
+        })
+        o.save(force_insert=True)
+
+        data = client_config
 
     database.close_connection()
 
@@ -136,7 +132,7 @@ def update_config(client_config: dict):
     from jesse.models.Option import Option
 
     # at this point there must already be one option record for "config" existing, so:
-    o = Option.get_or_none(Option.type == 'config')
+    o = Option.get(Option.type == 'config')
 
     o.json = json.dumps(client_config)
     o.updated_at = jh.now()

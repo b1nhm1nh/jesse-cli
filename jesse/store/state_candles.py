@@ -102,6 +102,39 @@ class CandlesState:
             with_generation: bool = True,
             with_skip: bool = True
     ) -> None:
+
+        # add only 1 candle
+        if len(candle.shape) == 1:
+            self._add_one_candle(
+                candle,
+                exchange,
+                symbol,
+                timeframe,
+                with_execution,
+                with_generation,
+                with_skip)
+
+        # add only multiple candles
+        elif len(candle.shape) == 2:
+
+            self._add_multiple_candles(
+                candle,
+                exchange,
+                symbol,
+                timeframe,
+                with_execution,
+                with_generation,
+                )
+
+    def _add_one_candle(self,
+                        candle: np.ndarray,
+                        exchange: str,
+                        symbol: str,
+                        timeframe: str,
+                        with_execution: bool = True,
+                        with_generation: bool = True,
+                        with_skip: bool = True):
+        arr: DynamicNumpyArray = self.get_storage(exchange, symbol, timeframe)
         if jh.is_collecting_data():
             raise NotImplemented("Collecting data is deactivated at the moment")
             # make sure it's a complete (and not a forming) candle
@@ -163,6 +196,33 @@ class CandlesState:
         # past candles will be ignored (dropped)
         elif candle[0] < arr[-1][0]:
             return
+
+    def _add_multiple_candles(self,
+                              candle: np.ndarray,
+                              exchange: str,
+                              symbol: str,
+                              timeframe: str,
+                              with_execution: bool = True,
+                              with_generation: bool = True):
+
+        arr: DynamicNumpyArray = self.get_storage(exchange, symbol, timeframe)
+        # this is an array of candles
+        if len(arr) == 0:
+            arr.append_multiple(candle)
+
+        # if it's new, add
+        elif candle[-1][0] > arr[-1][0]:
+            # in paper mode, check to see if the new candle causes any active orders to be executed
+            if with_execution and jh.is_paper_trading():
+                self.simulate_order_execution(exchange, symbol, timeframe, candle)
+
+            arr.append_multiple(candle)
+
+            # generate other timeframes
+            if with_generation and timeframe == '1m':
+                self.generate_bigger_timeframes(candle, exchange, symbol, with_execution)
+        else:
+            raise ValueError('Try to insert list of candles into memory, but some already exist..')
 
     def add_candle_from_trade(self, trade, exchange: str, symbol: str) -> None:
         """
@@ -348,3 +408,80 @@ class CandlesState:
             return np.zeros((0, 6))
         else:
             return self.storage[long_key][-1]
+
+    # CTF Hack
+    def generate_warmup_ctf_candle(self, exchange: str, symbol: str):
+        candles = self.get_storage(exchange, symbol, '1m')
+        length = len(candles)
+        # jh.dd(length)
+        # print(f"Generating total = {length} ctf candles")
+        for i in range(length):
+            # generate and add candles for bigger timeframes
+            for timeframe in config['app']['ctf_timeframes']:
+                # for 1m, no work is needed
+                if timeframe == '1m':
+                    continue
+                
+                dif, long_key, short_key = self.forming_estimation(exchange, symbol, timeframe)
+
+                count = jh.timeframe_to_one_minutes(timeframe)
+
+                # Custom Timeframe hack, must reset candle at 07:00 new day
+                k = i + 1
+                if count < 1440:
+                    k = (i + 1) % 1440
+                # Last candle of the day, it's not a full candle 
+                if k == 0 and i > 1 and i - (1440 % count - 1) != (i + 1):
+                    # print(f"Generating short candle k = {k} - i = {i} len = {1440 % count} ts ={generated_candle[0]} timeframe = {timeframe}")
+                    generated_candle = generate_candle_from_one_minutes(
+                        timeframe,
+                        self.storage[short_key][i - (1440 % count - 1):(i + 1)],
+                        True)
+                    self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                with_generation=False)
+                else:
+                    # full candle, normal generation 
+                    if (k) % count == 0:
+                        # print(f"Generating normal candle k = {k} - i = {i} ts ={generated_candle[0]} timeframe = {timeframe}")
+                        generated_candle = generate_candle_from_one_minutes(
+                            timeframe,
+                            self.storage[short_key][(i - (count - 1)):(i + 1)])
+                        self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                with_generation=False)
+        print(f"Generated {length} candles")
+
+    # Generate candles from one minute data in realtime
+    def generate_ctf_bigger_timeframes(self, candle: np.ndarray, exchange: str, symbol: str, with_execution: bool) -> None:
+        if not jh.is_live():
+            return
+
+        for timeframe in config['app']['ctf_timeframes']:
+            # skip '1m'
+            if timeframe == '1m':
+                continue
+
+            last_candle = self.get_current_candle(exchange, symbol, timeframe)
+            print(f"last_candle = {last_candle}")
+            generate_from_count = int((candle[0] - last_candle[0]) / 60_000)
+            print(f"generate_from_count = {generate_from_count}")
+            short_candles = self.get_candles(exchange, symbol, '1m')[-1 - generate_from_count:]
+            print(f"short_candles = {short_candles}")
+
+            if len(short_candles) == 0:
+                raise ValueError(
+                    f'No candles were passed. More info:'
+                    f'\nexchange:{exchange}, symbol:{symbol}, timeframe:{timeframe}, generate_from_count:{generate_from_count}'
+                    f'\nlast_candle\'s timestamp: {last_candle[0]}'
+                    f'\ncurrent timestamp: {jh.now()}'
+                )
+
+            # update latest candle
+            generated_candle = generate_candle_from_one_minutes(
+                timeframe,
+                short_candles,
+                accept_forming_candles=True
+            )
+
+            self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution, with_generation=False)
+
+

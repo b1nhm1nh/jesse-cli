@@ -30,20 +30,7 @@ from jesse.services.redis import sync_publish, process_status
 from timeloop import Timeloop
 from datetime import timedelta
 from jesse.services.progressbar import Progressbar
-import pickle
-import redis
 
-def redis_load(key):
-    r = redis.Redis(host=jh.get_config('env.cluster.host','localhost'), port=jh.get_config('env.cluster.port',6379), db=jh.get_config('env.cluster.cache_db',0))
-    value = r.get(key)
-    if value:
-        return pickle.loads(value)
-    else:
-        return None
-
-def redis_save(key, value):
-    r = redis.Redis(host=jh.get_config('env.cluster.host'), port=jh.get_config('env.cluster.port'), db=jh.get_config('env.cluster.cache_db'))
-    r.set(key, pickle.dumps(value))
 
 def run(
         debug_mode,
@@ -197,7 +184,7 @@ def load_candles(start_date_str: str, finish_date_str: str) -> Dict[str, Dict[st
         key = jh.key(exchange, symbol)
 
         cache_key = f"{start_date_str}-{finish_date_str}-{key}"
-        cached_value = redis_load(cache_key)
+        cached_value = cache.get_value(cache_key)
         # if cache exists use cache_value
         # not cached, get and cache for later calls in the next 5 minutes
         # fetch from database
@@ -220,8 +207,7 @@ def load_candles(start_date_str: str, finish_date_str: str) -> Dict[str, Dict[st
                 f'There are missing candles between {start_date_str} => {finish_date_str}')
 
         # cache it for near future calls
-        redis_save(cache_key, tuple(candles_tuple))
-        #cache.set_value(cache_key, tuple(candles_tuple), expire_seconds=60 * 60 * 24 * 7)
+        cache.set_value(cache_key, tuple(candles_tuple), expire_seconds=60 * 60 * 24 * 7)
 
         candles[key] = {
             'exchange': exchange,

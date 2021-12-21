@@ -38,7 +38,7 @@ def validate_cwd() -> None:
     if not jh.is_jesse_project():
         print(
             jh.color(
-                'Current directory is not a Jesse project. You must run commands from the root of a Jesse project.',
+                'Current directory is not a Jesse project. You must run commands from the root of a Jesse project. Read this page for more info: https://docs.jesse.trade/docs/getting-started/#create-a-new-jesse-project',
                 'red'
             )
         )
@@ -95,7 +95,7 @@ def feedback(json_request: FeedbackRequestJson, authorization: Optional[str] = H
         return authenticator.unauthorized_response()
 
     from jesse.services import jesse_trade
-    return jesse_trade.feedback(json_request.description)
+    return jesse_trade.feedback(json_request.description, json_request.email)
 
 
 @fastapi_app.post("/report-exception")
@@ -105,7 +105,7 @@ def report_exception(json_request: ReportExceptionRequestJson, authorization: Op
 
     from jesse.services import jesse_trade
     return jesse_trade.report_exception(
-        json_request.description, json_request.traceback, json_request.mode, json_request.attach_logs, json_request.session_id
+        json_request.description, json_request.traceback, json_request.mode, json_request.attach_logs, json_request.session_id, json_request.email
     )
 
 

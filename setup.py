@@ -1,27 +1,40 @@
 from setuptools import setup, find_packages
 
 # also change in version.py
-VERSION = '0.28.3'
+VERSION = '0.30.7'
 DESCRIPTION = "A trading framework for cryptocurrencies"
 
 REQUIRED_PACKAGES = [
     'arrow',
     'blinker',
-    'Click',
+    'click',
     'matplotlib',
+    'mplfinance',
     'newtulipy',
     'numpy',
+    'numpy_groupies',
     'pandas',
     'peewee',
     'psycopg2-binary',
     'pydash',
     'pytest',
+    'PyWavelets',
+    'quantstats',
     'requests',
     'scipy',
+    'statsmodels',
     'TA-Lib',
     'tabulate',
     'timeloop',
-    'websocket-client'
+    'websocket-client',
+    'simplejson',
+    'aioredis',
+    'redis',
+    'fastapi',
+    'uvicorn',
+    'websockets',
+    'python-dotenv',
+    'aiofiles'
 ]
 
 with open("README.md", "r", encoding="utf-8") as f:
@@ -31,7 +44,7 @@ setup(
     name='jesse',
     version=VERSION,
     author="Saleh Mir",
-    author_email="algo@hey.com",
+    author_email="saleh@jesse.trade",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=long_description,
@@ -39,8 +52,8 @@ setup(
     url="https://jesse.trade",
     project_urls={
         'Documentation': 'https://docs.jesse.trade',
-        'Say Thanks!': 'http://forum.jesse.trade/',
-        'Source': 'http://github.com/jesse-ai/jesse',
+        'Say Thanks!': 'https://jesse.trade/discord',
+        'Source': 'https://github.com/jesse-ai/jesse',
         'Tracker': 'https://github.com/jesse-ai/jesse/issues',
     },
     install_requires=REQUIRED_PACKAGES,
@@ -53,6 +66,6 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     include_package_data=True,
 )

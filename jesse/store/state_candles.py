@@ -91,6 +91,24 @@ class CandlesState:
                 # ex: 1440 / 60 + 1 (reserve one for forming candle)
                 total_bigger_timeframe = int((bucket_size / jh.timeframe_to_one_minutes(timeframe)) + 1)
                 self.storage[key] = DynamicNumpyArray((total_bigger_timeframe, 6))
+        logger.info("BM: Initializing storage..")
+        logger.info("---considering_candles:" + str(config['app']['considering_candles']))
+        logger.info("---considering_timeframes:" + str(config['app']['considering_timeframes']))
+        enable_ctf = True
+        config['app']['ctf_timeframes'] = []
+        if enable_ctf:
+            for c in config['app']['considering_candles']:
+                exchange, symbol = c[0], c[1]
+                
+                for timeframe in config['app']['considering_timeframes']:
+                    if timeframe != timeframes.MINUTE_1:
+                        config['app']['ctf_timeframes'].append(timeframe)
+                        #config['app']['considering_timeframes'].remove(timeframe)
+                config['app']['considering_timeframes'] = tuple(['1m'])
+
+        logger.info("---considering_timeframes:" + str(config['app']['considering_timeframes']))
+        logger.info("---ctf_timeframes:" + str(config['app']['ctf_timeframes']))
+        
 
     def add_candle(
             self,

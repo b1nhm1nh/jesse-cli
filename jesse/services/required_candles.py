@@ -132,3 +132,50 @@ def inject_required_candles_to_store(candles: np.ndarray, exchange: str, symbol:
                     with_execution=False,
                     with_generation=False
                 )
+        # CTF Mod:
+        # Generte CTF candles
+        for timeframe in config['app']['ctf_timeframes']:
+            # skip 1m. already added
+            if timeframe == '1m':
+                continue
+
+            num = jh.timeframe_to_one_minutes(timeframe)
+
+            if (i + 1) % num == 0:
+                generated_candle = generate_candle_from_one_minutes(
+                    timeframe,
+                    candles[(i - (num - 1)):(i + 1)],
+                    True
+                )
+
+                store.candles.add_candle(
+                    generated_candle,
+                    exchange,
+                    symbol,
+                    timeframe,
+                    with_execution=False,
+                    with_generation=False
+                )
+
+            # # Custom Timeframe hack, must reset candle at 00:00 new day
+            # k = i + 1
+            # if num < 1440:
+            #     k = (i + 1) % 1440
+            # # Last candle of the day, it's not a full candle 
+            # if k == 0 and i > 1 and i - (1440 % num - 1) != (i + 1):
+            #     # print(f"Generating short candle k = {k} - i = {i} len = {1440 % count} ts ={generated_candle[0]} timeframe = {timeframe}")
+            #     generated_candle = generate_candle_from_one_minutes(
+            #         timeframe,
+            #         self.storage[short_key][i - (1440 % count - 1):(i + 1)],
+            #         True)
+            #     self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+            #                                 with_generation=False)
+            # else:
+            #     # full candle, normal generation 
+            #     if (k) % count == 0:
+            #         # print(f"Generating normal candle k = {k} - i = {i} ts ={generated_candle[0]} timeframe = {timeframe}")
+            #         generated_candle = generate_candle_from_one_minutes(
+            #             timeframe,
+            #             self.storage[short_key][(i - (count - 1)):(i + 1)])
+            #         self.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+            #                                 with_generation=False)                    

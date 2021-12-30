@@ -27,6 +27,7 @@ from jesse.services.file import store_logs
 from jesse.services.validators import validate_routes
 from jesse.store import store
 
+from jesse.ctf import on_generate_candles_for_bigger_timeframe
 
 def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[str, np.ndarray]]] = None,
         chart: bool = False, tradingview: bool = False, full_reports: bool = False,
@@ -268,31 +269,66 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
                 _simulate_price_change_effect(short_candle, exchange, symbol)
 
                 # generate and add candles for bigger timeframes
+                on_generate_candles_for_bigger_timeframe(candles, exchange, symbol, i, j)
+                continue
                 for timeframe in config['app']['considering_timeframes']:
                     # for 1m, no work is needed
                     if timeframe == '1m':
                         continue
 
                     count = jh.timeframe_to_one_minutes(timeframe)
-                    # until = count - ((i + 1) % count)
-
-                    # if (i + 1) % count == 0:
-                    #     generated_candle = generate_candle_from_one_minutes(
-                    #         timeframe,
-                    #         candles[j]['candles'][(i - (count - 1)):(i + 1)])
-                    #     store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
-                    #                              with_generation=False)
+                    # CTF Hack
                     # Custom Timeframe hack, must reset candle at 07:00 new day
                     k = (i + 1) % 1440  
                     # Last candle of the day, it's not a full candle 
                     # print (f"K {k} count {count} i={i}")
+
+                    # only works with TF < 1440
+                    if count < 1440 and (1440 % count != 0):                                  
+                        k = (i + 1) % 1440 
+                        # if i == 0:
+                        #     count = round(1440 - (1440 // count) * count)
+                        #     print(f"K {k} count {count} i={i}")
+                        #     generated_candle = generate_candle_from_one_minutes(
+                        #         timeframe,
+                        #         candles[j]['candles'][(i - (count-1)):(i + 1)],
+                        #         True)
+                        #     store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                        #                             with_generation=False)
+                        if ((k == 0) and (i > 1)):                      
+                            count = round(1440 - (1440 // count) * count)
+                            # logger.info(f"K {k} count {count} i={i}")
+                            generated_candle = generate_candle_from_one_minutes(
+                                timeframe,
+                                candles[j]['candles'][(i - (count - 1)):(i + 1)],
+                                True)
+                            store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                    with_generation=False)
+                            # print_candle(generated_candle, False, r.symbol)
+                        elif (k % count == 0):
+                            # logger.info(f"K {k} count {count} i={i}")
+                            generated_candle = generate_candle_from_one_minutes(
+                                timeframe,
+                                candles[j]['candles'][(i - (count - 1)):(i + 1)],
+                                False)
+                            store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                    with_generation=False)
+                            # print_candle(generated_candle, False, r.symbol)                        
+                    elif (i + 1) % count == 0:
+                        generated_candle = generate_candle_from_one_minutes(
+                            timeframe,
+                            candles[j]['candles'][(i - (count - 1)):(i + 1)])
+                        store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                with_generation=False)
+                    
+                    """
                     if k == 0 and i > 1 and i - (1440 % count - 1) != (i + 1):
                         generated_candle = generate_candle_from_one_minutes(
                             timeframe,
                             candles[j]['candles'][(i - (1440 % count - 1)):(i + 1)],
                             True)
                         store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
-                                                 with_generation=False)
+                                                with_generation=False)
                         # print(f"Generating short candle k = {k} - i = {i} ts ={generated_candle[0]}")
                         # print(f"Short candle ={generated_candle}")
                     else:
@@ -303,6 +339,8 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
                             store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
                                                     with_generation=False)
                             # print(f"Generating normal candle k = {k} - i = {i} ts ={generated_candle[0]}")
+                    """
+                    # End CTF Hack
 
             # update progressbar
             if not jh.is_debugging() and not jh.should_execute_silently() and i % 60 == 0:
@@ -321,17 +359,21 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
                 #                      r.symbol)
                 #     r.strategy._execute()
                 else:
-                    k = (i + 1) % 1440 
-                    if (k == 0 and i > 1) or (k % count == 0):
+                    # only works with TF < 1440
+                    if count < 1440 and 1440 % count != 0:                                  
+                        k = (i + 1) % 1440 
+                        if (k == 0 and i > 1) or (k % count == 0):
+                            if jh.is_debuggable('trading_candles'):
+                                print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                                            r.symbol)
+                            r.strategy._execute() 
+                    elif (i + 1) % count == 0:
                         # print candle
-                        
-                        # if (k == 0 and i >= 1440):
-                        #     print(f"Reseted candle k = {k} - i = {i}")
                         if jh.is_debuggable('trading_candles'):
                             print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
                                         r.symbol)
-                        r.strategy._execute()               
-
+                        r.strategy._execute()
+            # End CTF Hack
             # now check to see if there's any MARKET orders waiting to be executed
             store.orders.execute_pending_market_orders()
 

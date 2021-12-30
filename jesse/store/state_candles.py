@@ -12,12 +12,13 @@ from timeloop import Timeloop
 from datetime import timedelta
 from jesse.services import logger
 
-
+from jesse.ctf import on_init_storage
 class CandlesState:
     def __init__(self) -> None:
         self.storage = {}
         self.are_all_initiated = False
         self.initiated_pairs = {}
+        self.should_stop = False
 
     def generate_new_candles_loop(self) -> None:
         """
@@ -97,7 +98,7 @@ class CandlesState:
                 # ex: 1440 / 60 + 1 (reserve one for forming candle)
                 total_bigger_timeframe = int((bucket_size / jh.timeframe_to_one_minutes(timeframe)) + 1)
                 self.storage[key] = DynamicNumpyArray((total_bigger_timeframe, 6))
-
+              
     def add_candle(
             self,
             candle: np.ndarray,
@@ -351,11 +352,15 @@ class CandlesState:
         required_1m_to_complete_count = jh.timeframe_to_one_minutes(timeframe)
         current_1m_count = len(self.get_storage(exchange, symbol, '1m'))
 
+        # CTF, dif reset at 00:00 for CTF
+        if required_1m_to_complete_count < 1440:
+            current_1m_count = current_1m_count % 1440
+
         dif = current_1m_count % required_1m_to_complete_count
         # print(f'lk {long_key} - sk {short_key} -t {required_1m_to_complete_count} - c {current_1m_count} - dif {dif}')
         # CTF, dif reset at 00:00
-        if current_1m_count % 1440  == 0:
-           dif = 0
+        # if current_1m_count % 1440  == 0:
+        #    dif = 0
         # print(f'-lk {long_key} - sk {short_key} -t {required_1m_to_complete_count} - c {current_1m_count} - dif {dif}')
         return dif, long_key, short_key
 

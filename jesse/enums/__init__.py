@@ -24,6 +24,7 @@ class timeframes:
     MINUTE_15 = '15m'
     MINUTE_30 = '30m'
     MINUTE_45 = '45m'
+    MINUTE_54 = '54m'
     HOUR_1 = '1h'
     HOUR_2 = '2h'
     HOUR_3 = '3h'
@@ -32,7 +33,8 @@ class timeframes:
     HOUR_8 = '8h'
     HOUR_12 = '12h'
     DAY_1 = '1D'
-
+    DAY_3 = '3D'
+    WEEK_1 = '1W'
 
 class colors:
     GREEN = 'green'

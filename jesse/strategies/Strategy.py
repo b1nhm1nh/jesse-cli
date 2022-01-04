@@ -565,10 +565,11 @@ class Strategy(ABC):
                         if submitted_order:
                             self._close_position_orders.append(submitted_order)
         except TypeError:
-            raise exceptions.InvalidStrategy(
-                'Something odd is going on within your strategy causing a TypeError exception. '
-                'Try running it with "--debug" in a backtest to see what was going on near the end, and fix it.'
-            )
+            # raise exceptions.InvalidStrategy(
+            #     'Something odd is going on within your strategy causing a TypeError exception. '
+            #     'Try running it with "--debug" in a backtest to see what was going on near the end, and fix it.'
+            # )
+            pass
         except:
             raise
 

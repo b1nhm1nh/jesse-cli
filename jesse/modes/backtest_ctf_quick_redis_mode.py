@@ -383,13 +383,26 @@ def _initialized_strategies(hyperparameters: dict = None):
 def _execute_candles(i: int):
     for r in router.routes:
         count = jh.timeframe_to_one_minutes(r.timeframe)
-        # CTF hack
-        if (i % 1440) % count == 0:
-            # print candle
-            if jh.is_debuggable('trading_candles'):
-                print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
-                             r.symbol)
-            r.strategy._execute()
+            # 1m timeframe
+            if r.timeframe == timeframes.MINUTE_1:
+                r.strategy._execute()
+            # CTF Hack
+            else:
+                # only works with TF < 1440
+                if count < 1440:                                   
+                    k = (i + 1) % 1440 
+                    if (k == 0 and i > 1) or (k % count == 0):
+                        if jh.is_debuggable('trading_candles'):
+                            print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                                        r.symbol)
+                        r.strategy._execute() 
+                elif (i + 1) % count == 0:
+                    # print candle
+                    if jh.is_debuggable('trading_candles'):
+                        print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                                    r.symbol)
+                    r.strategy._execute()
+            # End CTF Hack
 
     # now check to see if there's any MARKET orders waiting to be executed
     store.orders.execute_pending_market_orders()

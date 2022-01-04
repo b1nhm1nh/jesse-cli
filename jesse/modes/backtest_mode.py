@@ -31,7 +31,7 @@ from timeloop import Timeloop
 from datetime import timedelta
 from jesse.services.progressbar import Progressbar
 
-
+from jesse.ctf import on_generate_candles_for_bigger_timeframe
 def run(
         debug_mode,
         user_config: dict,
@@ -166,7 +166,7 @@ def load_candles(start_date_str: str, finish_date_str: str) -> Dict[str, Dict[st
     if finish_date > arrow.utcnow().int_timestamp * 1000:
         raise ValueError(
             "Can't load candle data from the future! The finish-date can be up to yesterday's date at most.")
-
+    # print(f"{start_date_str} -> {finish_date_str}")
     # load and add required warm-up candles for backtest
     if jh.is_backtesting():
         for c in config['app']['considering_candles']:
@@ -290,6 +290,9 @@ def simulator(
             _simulate_price_change_effect(short_candle, exchange, symbol)
 
             # generate and add candles for bigger timeframes
+            on_generate_candles_for_bigger_timeframe(candles, exchange, symbol, i, j)
+            continue
+        
             for timeframe in config['app']['considering_timeframes']:
                 # for 1m, no work is needed
                 if timeframe == '1m':
@@ -298,12 +301,52 @@ def simulator(
                 count = jh.timeframe_to_one_minutes(timeframe)
                 # until = count - ((i + 1) % count)
 
-                if (i + 1) % count == 0:
+                # CTF Hack
+                # Custom Timeframe hack, must reset candle at 07:00 new day
+                k = (i + 1) % 1440  
+                # Last candle of the day, it's not a full candle 
+                # print (f"K {k} count {count} i={i}")
+
+                # only works with TF < 1440
+                if count < 1440 and (1440 % count != 0):                                  
+                    k = (i + 1) % 1440 
+                    # if i == 0:
+                    #     count = round(1440 - (1440 // count) * count)
+                    #     print(f"K {k} count {count} i={i}")
+                    #     generated_candle = generate_candle_from_one_minutes(
+                    #         timeframe,
+                    #         candles[j]['candles'][(i - (count-1)):(i + 1)],
+                    #         True)
+                    #     store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                    #                             with_generation=False)
+                    if ((k == 0) and (i > 1)):                      
+                        count = round(1440 - (1440 // count) * count)
+                        # logger.info(f"K {k} count {count} i={i}")
+                        generated_candle = generate_candle_from_one_minutes(
+                            timeframe,
+                            candles[j]['candles'][(i - (count - 1)):(i + 1)],
+                            True)
+                        store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                with_generation=False)
+                        # print_candle(generated_candle, False, r.symbol)
+                    elif (k % count == 0):
+                        # logger.info(f"K {k} count {count} i={i}")
+                        generated_candle = generate_candle_from_one_minutes(
+                            timeframe,
+                            candles[j]['candles'][(i - (count - 1)):(i + 1)],
+                            False)
+                        store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                with_generation=False)
+                        # print_candle(generated_candle, False, r.symbol)                        
+                elif (i + 1) % count == 0:
                     generated_candle = generate_candle_from_one_minutes(
                         timeframe,
                         candles[j]['candles'][(i - (count - 1)):(i + 1)])
                     store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
-                                             with_generation=False)
+                                            with_generation=False)
+                
+                # End CTF Hack
+
 
         # update progressbar
         if not run_silently and i % 60 == 0:
@@ -319,12 +362,24 @@ def simulator(
             # 1m timeframe
             if r.timeframe == timeframes.MINUTE_1:
                 r.strategy._execute()
-            elif (i + 1) % count == 0:
-                # print candle
-                if jh.is_debuggable('trading_candles'):
-                    print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
-                                 r.symbol)
-                r.strategy._execute()
+            # CTF Hack
+            else:
+                # only works with TF < 1440
+                if count < 1440 and 1440 % count != 0:                                  
+                    k = (i + 1) % 1440 
+                    if (k == 0 and i > 1) or (k % count == 0):
+                        if jh.is_debuggable('trading_candles'):
+                            print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                                        r.symbol)
+                        r.strategy._execute() 
+                elif (i + 1) % count == 0:
+                    # print candle
+                    if jh.is_debuggable('trading_candles'):
+                        print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                                    r.symbol)
+                    r.strategy._execute()
+            # End CTF Hack
+              
 
         # now check to see if there's any MARKET orders waiting to be executed
         store.orders.execute_pending_market_orders()
@@ -352,6 +407,7 @@ def _get_fixed_jumped_candle(previous_candle: np.ndarray, candle: np.ndarray) ->
     """
     A little workaround for the times that the price has jumped and the opening
     price of the current candle is not equal to the previous candle's close!
+
     :param previous_candle: np.ndarray
     :param candle: np.ndarray
     """

@@ -339,16 +339,20 @@ def simulator(
                 r.strategy._execute()
             # CTF Hack
             else:
-                k = (i + 1) % 1440 
-                if (k == 0 and i > 1) or (k % count == 0):
+                # only works with TF < 1440
+                if count < 1440:                                   
+                    k = (i + 1) % 1440 
+                    if (k == 0 and i > 1) or (k % count == 0):
+                        if jh.is_debuggable('trading_candles'):
+                            print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                                        r.symbol)
+                        r.strategy._execute() 
+                elif (i + 1) % count == 0:
                     # print candle
-                    
-                    # if (k == 0 and i >= 1440):
-                    #     print(f"Reseted candle k = {k} - i = {i}")
                     if jh.is_debuggable('trading_candles'):
                         print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
                                     r.symbol)
-                    r.strategy._execute() 
+                    r.strategy._execute()
             # End CTF Hack
               
 

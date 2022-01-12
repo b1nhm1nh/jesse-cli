@@ -1,4 +1,4 @@
-# Jesse
+# Jesse - Cli - Legacy Version
 [![PyPI](https://img.shields.io/pypi/v/jesse)](https://pypi.org/project/jesse)
 [![Downloads](https://pepy.tech/badge/jesse)](https://pepy.tech/project/jesse)
 [![Docker Pulls](https://img.shields.io/docker/pulls/salehmir/jesse)](https://hub.docker.com/r/salehmir/jesse)

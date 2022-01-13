@@ -15,17 +15,20 @@ def on_init_storage():
     logger.info("BM: Initializing storage..")
     logger.info("---considering_candles:" + str(config['app']['considering_candles']))
     logger.info("---considering_timeframes:" + str(config['app']['considering_timeframes']))
-    enable_ctf = False
+    enable_ctf = True
     config['app']['ctf_timeframes'] = []
     if enable_ctf:
         for c in config['app']['considering_candles']:
             exchange, symbol = c[0], c[1]
-            
+            config['app']['all_timeframes'] = config['app']['considering_timeframes']
+            config['app']['considering_timeframes'] = list(config['app']['considering_timeframes'])
             for timeframe in config['app']['considering_timeframes']:
                 if timeframe != timeframes.MINUTE_1:
-                    config['app']['ctf_timeframes'].append(timeframe)
-                    #config['app']['considering_timeframes'].remove(timeframe)
-            config['app']['considering_timeframes'] = tuple(['1m'])
+                    # config['app']['ctf_timeframes'].append(timeframe)
+                    # config['app']['considering_timeframes'].remove(timeframe)
+                    pass
+                    
+            # config['app']['considering_timeframes'] = tuple(['1m'])
 
     logger.info("---considering_timeframes:" + str(config['app']['considering_timeframes']))
     logger.info("---ctf_timeframes:" + str(config['app']['ctf_timeframes']))
@@ -44,7 +47,7 @@ def on_generate_candles_for_bigger_timeframe(candles: np.ndarray, exchange: str,
     from jesse.store import store
 
     # generate and add candles for bigger timeframes
-    for timeframe in config['app']['considering_timeframes']:
+    for timeframe in config['app']['all_timeframes']:
         # for 1m, no work is needed
         if timeframe == '1m':
             continue
@@ -96,11 +99,9 @@ on generate ctf candles
 """
 def on_generate_warmup_candles_for_bigger_timeframe(candles: np.ndarray, exchange: str, symbol: str, i) -> None:
     from jesse.store import store
+    # logger.info(f"BM: Generating warmup candles for bigger timeframes: {config['app']['all_timeframes']}..")
 
-    # generate and add candles for bigger timeframes
-    all_timeframes = list(config['app']['considering_timeframes']) + list(config['app']['ctf_timeframes'])
-
-    for timeframe in all_timeframes:
+    for timeframe in config['app']['all_timeframes']:
         # skip 1m. already added
         if timeframe == '1m':
             continue

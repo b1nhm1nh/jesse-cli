@@ -727,6 +727,7 @@ def timeframe_to_one_minutes(timeframe: str) -> int:
         timeframes.MINUTE_15: 15,
         timeframes.MINUTE_30: 30,
         timeframes.MINUTE_45: 45,
+        timeframes.MINUTE_54: 54,
         timeframes.HOUR_1: 60,
         timeframes.HOUR_2: 60 * 2,
         timeframes.HOUR_3: 60 * 3,

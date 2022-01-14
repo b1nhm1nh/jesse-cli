@@ -277,20 +277,40 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
 
                     count = jh.timeframe_to_one_minutes(timeframe)
 
-                    # if i % count == 0:
-                    # CTF Hack
-                    if (i % 1440) % count == 0:
-                        if i % 1440 == 0 and 1440 % count != 0:
-                            count = 1440 - (1440 // count) * count
+                    is_ctf_candle = False
+                    if (count < 1440) and (1440 % count != 0):
+                        is_ctf_candle = True
+                    # only works with TF < 1440
+                    if is_ctf_candle:                                  
+                        k = (i) % 1440 
+                        if ((k == 0) and (i > 1)):                      
+                            count = round(1440 - (1440 // count) * count)
+                            # logger.info(f"K {k} count {count} i={i}")
+                            _get_fixed_jumped_candle(candles[j]['candles'][i - count - 1], candles[j]['candles'][i - count])  
+                            generated_candle = generate_candle_from_one_minutes(
+                                timeframe,
+                                candles[j]['candles'][(i - (count)):(i)],
+                                True)
+                            store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                    with_generation=False)
+                            # print_candle(generated_candle, False, r.symbol)
+                        elif (k % count == 0):
+                            # logger.info(f"K {k} count {count} i={i}")
+                            _get_fixed_jumped_candle(candles[j]['candles'][i - count - 1], candles[j]['candles'][i - count])  
+                            generated_candle = generate_candle_from_one_minutes(
+                                timeframe,
+                                candles[j]['candles'][(i - (count)):(i)],
+                                False)
+                            store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                                    with_generation=False)
+                            # print_candle(generated_candle, False, r.symbol)                        
+                    elif (i) % count == 0:
                         _get_fixed_jumped_candle(candles[j]['candles'][i - count - 1], candles[j]['candles'][i - count])  
                         generated_candle = generate_candle_from_one_minutes(
                             timeframe,
-                            candles[j]['candles'][i - count:i],
-                            accept_forming_candles=True)
-                        # _get_fixed_jumped_candle(store.candles.get_current_candle(exchange, symbol, timeframe), generated_candle)
-                        
+                            candles[j]['candles'][(i - (count)):(i)])
                         store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
-                                                 with_generation=False)
+                                                with_generation=False)                        
 
             # update progressbar
             if not jh.is_debugging() and not jh.should_execute_silently():
@@ -365,7 +385,18 @@ def _execute_candles(i: int):
     for r in router.routes:
         count = jh.timeframe_to_one_minutes(r.timeframe)
         # CTF hack
-        if (i % 1440) % count == 0:
+        is_ctf_candle = False
+        if (count < 1440) and (1440 % count != 0):
+            is_ctf_candle = True
+        if is_ctf_candle:
+            k = i % 1440 
+            if ((k == 0) and (i > 1)) or (k % count == 0):
+                if jh.is_debuggable('trading_candles'):
+                    print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                             r.symbol)
+                r.strategy._execute()
+
+        elif i % count == 0:
             # print candle
             if jh.is_debuggable('trading_candles'):
                 print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,

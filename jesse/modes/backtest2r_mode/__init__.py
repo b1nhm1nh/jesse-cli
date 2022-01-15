@@ -29,6 +29,8 @@ from jesse.store import store
 import pickle
 import redis
 
+from jesse.ctf import on_generate_candles_for_bigger_timeframe_with_skip
+
 def redis_load(key):
     r = redis.Redis(host=jh.get_config('env.cluster.host'), port=jh.get_config('env.cluster.port'), db=jh.get_config('env.cluster.cache_db'))
     value = r.get(key)

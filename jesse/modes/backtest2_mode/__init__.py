@@ -255,7 +255,7 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
         return 1
     # take the greatest common divisor for that purpose
     min_timeframe = np.gcd.reduce(consider_timeframes)
-    print(f"Min_tf {min_timeframe}")
+    # print(f"Min_tf {min_timeframe}")
 
     # add initial balance
     save_daily_portfolio_balance()

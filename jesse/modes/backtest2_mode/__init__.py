@@ -27,6 +27,7 @@ from jesse.services.file import store_logs
 from jesse.services.validators import validate_routes
 from jesse.store import store
 
+from jesse.ctf import on_generate_candles_for_bigger_timeframe_with_skip
 
 def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[str, np.ndarray]]] = None,
         chart: bool = False, tradingview: bool = False, full_reports: bool = False,
@@ -214,8 +215,48 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
     store.app.time = first_candles_set[0][0]
 
     # initiate strategies
-    min_timeframe = _initialized_strategies(hyperparameters)
+
+    for r in router.routes:
+        StrategyClass = jh.get_strategy_class(r.strategy_name)
+
+        try:
+            r.strategy = StrategyClass()
+        except TypeError:
+            raise exceptions.InvalidStrategy(
+                "Looks like the structure of your strategy directory is incorrect. "
+                "Make sure to include the strategy INSIDE the __init__.py file.\n"
+                "If you need working examples, check out: https://github.com/jesse-ai/example-strategies"
+            )
+
+        r.strategy.name = r.strategy_name
+        r.strategy.exchange = r.exchange
+        r.strategy.symbol = r.symbol
+        r.strategy.timeframe = r.timeframe
+        # inject hyper parameters (used for optimize_mode)
+        # convert DNS string into hyperparameters
+        if r.dna and hyperparameters is None:
+            hyperparameters = jh.dna_to_hp(r.strategy.hyperparameters(), r.dna)
+
+        # inject hyperparameters sent within the optimize mode
+        if hyperparameters is not None:
+            r.strategy.hp = hyperparameters
+
+        # init few objects that couldn't be initiated in Strategy __init__
+        # it also injects hyperparameters into self.hp in case the route does not uses any DNAs
+        r.strategy._init_objects()
+
+        selectors.get_position(r.exchange, r.symbol).strategy = r.strategy
+
+    # search for minimum timeframe for skips
+    consider_timeframes = [jh.timeframe_to_one_minutes(timeframe) for timeframe in config['app']['considering_timeframes'] if timeframe != '1m']
+
+    # for cases where only 1m is used in this simulation
+    if not consider_timeframes:
+        return 1
+    # take the greatest common divisor for that purpose
+    min_timeframe = np.gcd.reduce(consider_timeframes)
     print(f"Min_tf {min_timeframe}")
+
     # add initial balance
     save_daily_portfolio_balance()
 
@@ -253,6 +294,8 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
                 _simulate_price_change_effect(current_temp_candle, exchange, symbol)
 
                 # generate and add candles for bigger timeframes
+                on_generate_candles_for_bigger_timeframe_with_skip(candles, exchange, symbol, i, j)
+                continue
                 for timeframe in config['app']['considering_timeframes']:
                     # for 1m, no work is needed
                     if timeframe == '1m':
@@ -300,7 +343,29 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
                 progressbar.update(skip)
 
             # now that all new generated candles are ready, execute
-            _execute_candles(i)
+            for r in router.routes:
+                count = jh.timeframe_to_one_minutes(r.timeframe)
+                # CTF hack
+                is_ctf_candle = False
+                if (count < 1440) and (1440 % count != 0):
+                    is_ctf_candle = True
+                if is_ctf_candle:
+                    k = i % 1440 
+                    if ((k == 0) and (i > 1)) or (k % count == 0):
+                        if jh.is_debuggable('trading_candles'):
+                            print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                                    r.symbol)
+                        r.strategy._execute()
+
+                elif i % count == 0:
+                    # print candle
+                    if jh.is_debuggable('trading_candles'):
+                        print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
+                                    r.symbol)
+                    r.strategy._execute()
+
+            # now check to see if there's any MARKET orders waiting to be executed
+            store.orders.execute_pending_market_orders()
 
             if i % 1440 == 0:
                 save_daily_portfolio_balance()
@@ -319,78 +384,7 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
 
             i += skip
 
-    _finish_simulation(begin_time_track)
-
-
-def _initialized_strategies(hyperparameters: dict = None):
-    for r in router.routes:
-        StrategyClass = jh.get_strategy_class(r.strategy_name)
-
-        try:
-            r.strategy = StrategyClass()
-        except TypeError:
-            raise exceptions.InvalidStrategy(
-                "Looks like the structure of your strategy directory is incorrect. "
-                "Make sure to include the strategy INSIDE the __init__.py file.\n"
-                "If you need working examples, check out: https://github.com/jesse-ai/example-strategies"
-            )
-
-        r.strategy.name = r.strategy_name
-        r.strategy.exchange = r.exchange
-        r.strategy.symbol = r.symbol
-        r.strategy.timeframe = r.timeframe
-        # inject hyper parameters (used for optimize_mode)
-        # convert DNS string into hyperparameters
-        if r.dna and hyperparameters is None:
-            hyperparameters = jh.dna_to_hp(r.strategy.hyperparameters(), r.dna)
-
-        # inject hyperparameters sent within the optimize mode
-        if hyperparameters is not None:
-            r.strategy.hp = hyperparameters
-
-        # init few objects that couldn't be initiated in Strategy __init__
-        # it also injects hyperparameters into self.hp in case the route does not uses any DNAs
-        r.strategy._init_objects()
-
-        selectors.get_position(r.exchange, r.symbol).strategy = r.strategy
-
-    # search for minimum timeframe for skips
-    consider_timeframes = [jh.timeframe_to_one_minutes(timeframe) for timeframe in config['app']['considering_timeframes'] if timeframe != '1m']
-
-    # for cases where only 1m is used in this simulation
-    if not consider_timeframes:
-        return 1
-    # take the greatest common divisor for that purpose
-    return np.gcd.reduce(consider_timeframes)
-
-
-def _execute_candles(i: int):
-    for r in router.routes:
-        count = jh.timeframe_to_one_minutes(r.timeframe)
-        # CTF hack
-        is_ctf_candle = False
-        if (count < 1440) and (1440 % count != 0):
-            is_ctf_candle = True
-        if is_ctf_candle:
-            k = i % 1440 
-            if ((k == 0) and (i > 1)) or (k % count == 0):
-                if jh.is_debuggable('trading_candles'):
-                    print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
-                             r.symbol)
-                r.strategy._execute()
-
-        elif i % count == 0:
-            # print candle
-            if jh.is_debuggable('trading_candles'):
-                print_candle(store.candles.get_current_candle(r.exchange, r.symbol, r.timeframe), False,
-                             r.symbol)
-            r.strategy._execute()
-
-    # now check to see if there's any MARKET orders waiting to be executed
-    store.orders.execute_pending_market_orders()
-
-
-def _finish_simulation(begin_time_track: float):
+    #_finish_simulation(begin_time_track)
     if not jh.should_execute_silently():
         if jh.is_debuggable('trading_candles') or jh.is_debuggable('shorter_period_candles'):
             print('\n')
@@ -415,11 +409,9 @@ def _get_fixed_jumped_candle(previous_candle: np.ndarray, candle: np.ndarray) ->
     :param previous_candle: np.ndarray
     :param candle: np.ndarray
     """
-    if previous_candle[2] < candle[1]:
+    if candle[1] != previous_candle[2]:
         candle[1] = previous_candle[2]
         candle[4] = min(previous_candle[2], candle[4])
-    elif previous_candle[2] > candle[1]:
-        candle[1] = previous_candle[2]
         candle[3] = max(previous_candle[2], candle[3])
 
     return candle

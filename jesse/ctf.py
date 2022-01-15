@@ -92,6 +92,53 @@ def on_generate_candles_for_bigger_timeframe(candles: np.ndarray, exchange: str,
                                     with_generation=False)
         
         # End CTF Hack
+"""
+Hook backtest_modes.py 
+on generate ctf candles
+"""
+def on_generate_candles_for_bigger_timeframe_with_skip(candles: np.ndarray, exchange: str, symbol: str, i, j) -> None:
+    from jesse.store import store
+    for timeframe in config['app']['considering_timeframes']:
+        # for 1m, no work is needed
+        if timeframe == '1m':
+            continue
+
+        count = jh.timeframe_to_one_minutes(timeframe)
+
+        is_ctf_candle = False
+        if (count < 1440) and (1440 % count != 0):
+            is_ctf_candle = True
+        # only works with TF < 1440
+        if is_ctf_candle:                                  
+            k = (i) % 1440 
+            if ((k == 0) and (i > 1)):                      
+                count = round(1440 - (1440 // count) * count)
+                # logger.info(f"K {k} count {count} i={i}")
+                _get_fixed_jumped_candle(candles[j]['candles'][i - count - 1], candles[j]['candles'][i - count])  
+                generated_candle = generate_candle_from_one_minutes(
+                    timeframe,
+                    candles[j]['candles'][(i - (count)):(i)],
+                    True)
+                store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                        with_generation=False)
+                # print_candle(generated_candle, False, r.symbol)
+            elif (k % count == 0):
+                # logger.info(f"K {k} count {count} i={i}")
+                _get_fixed_jumped_candle(candles[j]['candles'][i - count - 1], candles[j]['candles'][i - count])  
+                generated_candle = generate_candle_from_one_minutes(
+                    timeframe,
+                    candles[j]['candles'][(i - (count)):(i)],
+                    False)
+                store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                        with_generation=False)
+                # print_candle(generated_candle, False, r.symbol)                        
+        elif (i) % count == 0:
+            _get_fixed_jumped_candle(candles[j]['candles'][i - count - 1], candles[j]['candles'][i - count])  
+            generated_candle = generate_candle_from_one_minutes(
+                timeframe,
+                candles[j]['candles'][(i - (count)):(i)])
+            store.candles.add_candle(generated_candle, exchange, symbol, timeframe, with_execution=False,
+                                    with_generation=False)   
 
 """
 Hook backtest_modes.py 
@@ -126,13 +173,8 @@ def on_generate_warmup_candles_for_bigger_timeframe(candles: np.ndarray, exchang
                     True
                 )
 
-                store.candles.add_candle(
-                    generated_candle,
-                    exchange,
-                    symbol,
-                    timeframe,
-                    with_execution=False,
-                    with_generation=False
+                store.candles.add_candle(generated_candle, exchange, symbol, timeframe,
+                    with_execution=False, with_generation=False
                 )
                 # print_candle(generated_candle, False, symbol) 
             elif k % num == 0:
@@ -143,13 +185,8 @@ def on_generate_warmup_candles_for_bigger_timeframe(candles: np.ndarray, exchang
                     True
                 )
 
-                store.candles.add_candle(
-                    generated_candle,
-                    exchange,
-                    symbol,
-                    timeframe,
-                    with_execution=False,
-                    with_generation=False
+                store.candles.add_candle(generated_candle, exchange, symbol, timeframe,
+                    with_execution=False, with_generation=False
                 )
                 # print_candle(generated_candle, False, symbol) 
                 # print(f"{i} k = {k}")
@@ -163,13 +200,8 @@ def on_generate_warmup_candles_for_bigger_timeframe(candles: np.ndarray, exchang
                     True
                 )
 
-                store.candles.add_candle(
-                    generated_candle,
-                    exchange,
-                    symbol,
-                    timeframe,
-                    with_execution=False,
-                    with_generation=False
+                store.candles.add_candle(generated_candle, exchange, symbol, timeframe,
+                    with_execution=False, with_generation=False
                 )
 
 """

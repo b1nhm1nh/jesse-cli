@@ -30,11 +30,8 @@ def load_required_candles(exchange: str, symbol: str, start_date_str: str, finis
     if finish_date > arrow.utcnow().int_timestamp * 1000:
         raise ValueError('Can\'t backtest the future!')
 
-    # CTF Hack
-    # include CTF timeframes in backtest - optimize mode
-    all_timeframes = list(config['app']['considering_timeframes']) + list(config['app']['ctf_timeframes'])
-    max_timeframe = max(all_timeframes)
-    
+    max_timeframe = jh.max_timeframe(config['app']['all_timeframes'])
+    print(f"Max timeframe: {max_timeframe}")
     short_candles_count = jh.get_config('env.data.warmup_candles_num', 210) * jh.timeframe_to_one_minutes(max_timeframe)
     pre_finish_date = start_date - 60_000
     pre_start_date = pre_finish_date - short_candles_count * 60_000
@@ -117,6 +114,7 @@ def inject_required_candles_to_store(candles: np.ndarray, exchange: str, symbol:
     store.candles.batch_add_candle(candles, exchange, symbol, '1m', with_generation=False)
 
     # loop to generate, and add candles (without execution)
+    #print(f"Generating {len(candles)}")
     for i in range(len(candles)):
         on_generate_warmup_candles_for_bigger_timeframe(candles, exchange, symbol, i)
         continue

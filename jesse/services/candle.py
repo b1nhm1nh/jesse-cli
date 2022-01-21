@@ -29,7 +29,6 @@ def generate_candle_from_one_minutes(timeframe: str,
 def print_candle(candle: np.ndarray, is_partial: bool, symbol: str) -> None:
     if jh.should_execute_silently():
         return
-
     if is_bullish(candle) and is_partial:
         candle_form = click.style('  ==', fg='green')
     elif is_bullish(candle) and not is_partial:

@@ -394,7 +394,7 @@ class CandlesState:
         else:
             # in backtest mode, candle away start at 00:00, so we dont have to calculate midnight diff
             if required_1m_to_complete_count < 1440:
-               current_1m_count = current_1m_count % 1440
+               current_1m_count = current_1m_count % 1440 
             dif = current_1m_count % required_1m_to_complete_count
 
         return dif, long_key, short_key

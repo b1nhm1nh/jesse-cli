@@ -30,7 +30,7 @@ def load_required_candles(exchange: str, symbol: str, start_date_str: str, finis
     if finish_date > arrow.utcnow().int_timestamp * 1000:
         raise ValueError('Can\'t backtest the future!')
 
-    max_timeframe = jh.max_timeframe(config['app']['all_timeframes'])
+    max_timeframe = jh.max_timeframe(config['app']['considering_timeframes'])
     print(f"Max timeframe: {max_timeframe}")
     short_candles_count = jh.get_config('env.data.warmup_candles_num', 210) * jh.timeframe_to_one_minutes(max_timeframe)
     pre_finish_date = start_date - 60_000

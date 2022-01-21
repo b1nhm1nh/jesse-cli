@@ -4,19 +4,26 @@ from jesse.config import config, reset_config
 from jesse.factories import fake_candle, fake_range_candle
 from jesse.services.candle import generate_candle_from_one_minutes
 from jesse.store import store
+from .utils import  set_up
 
 
-def set_up():
+
+def _set_up():
+    from jesse.routes import router
+    from jesse.enums import exchanges, timeframes, order_roles, order_types
+
     reset_config()
     config['app']['considering_timeframes'] = ['1m', '5m']
     config['app']['considering_symbols'] = ['BTC-USD']
     config['app']['considering_exchanges'] = ['Sandbox']
     store.reset()
+    set_up([(exchanges.SANDBOX, 'BTC-USD', timeframes.MINUTE_5, 'Test39')])
+
     store.candles.init_storage()
 
 
 def test_batch_add_candles():
-    set_up()
+    _set_up()
 
     assert len(store.candles.get_candles('Sandbox', 'BTC-USD', '1m')) == 0
 
@@ -29,7 +36,7 @@ def test_batch_add_candles():
 
 
 def test_can_add_new_candle():
-    set_up()
+    _set_up()
 
     np.testing.assert_equal(store.candles.get_candles('Sandbox', 'BTC-USD', '1m'), np.zeros((0, 6)))
 
@@ -47,7 +54,7 @@ def test_can_add_new_candle():
 
 
 def test_can_update_candle():
-    set_up()
+    _set_up()
 
     np.testing.assert_equal(store.candles.get_candles('Sandbox', 'BTC-USD', '1m'), np.zeros((0, 6)))
 
@@ -65,7 +72,7 @@ def test_can_update_candle():
 
 
 def test_get_candles_including_forming():
-    set_up()
+    _set_up()
 
     candles_to_add = fake_range_candle(14)
     store.candles.batch_add_candle(candles_to_add, 'Sandbox', 'BTC-USD', '1m')
@@ -97,7 +104,7 @@ def test_get_candles_including_forming():
         generate_candle_from_one_minutes(
             '5m', candles_to_add[10:14], True
         ),
-        'Sandbox', 'BTC-USD', '5m'
+        'Sandbox', 'BTC-USD', '5m', True
     )
 
     assert len(store.candles.get_candles('Sandbox', 'BTC-USD', '5m')) == 3
@@ -106,7 +113,7 @@ def test_get_candles_including_forming():
 
 
 def test_get_forming_candle():
-    set_up()
+    _set_up()
 
     candles_to_add = fake_range_candle(13)
     store.candles.batch_add_candle(candles_to_add[0:4], 'Sandbox', 'BTC-USD', '1m')

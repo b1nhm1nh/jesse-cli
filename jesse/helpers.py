@@ -156,8 +156,7 @@ def reduce_charset(strategy_hp,
         for i in range(0, len(charset)):
             char = charset[i]
             dna = dna[:index] + char + dna[index + 1:]
-            hps = hyperparameters()
-            hp = jh.dna_to_hp(hps, dna)
+            hp = jh.dna_to_hp(strategy_hp, dna)
             khp = list(hp)
             hp_value = hp[khp[index]]
             if last_value != hp_value:

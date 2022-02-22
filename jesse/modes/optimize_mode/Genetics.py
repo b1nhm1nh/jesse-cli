@@ -30,7 +30,9 @@ class Genetics(ABC):
     def __init__(self, iterations: int, population_size: int, solution_len: int,
                  charset: str = r'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvw',
                  fitness_goal: float = 1,
-                 options: Dict[str, Union[bool, Any]] = None) -> None:
+                 options: Dict[str, Union[bool, Any]] = None,
+                 charsets = None
+                 ) -> None:
         self.started_index = 0
         self.start_time = jh.now_to_timestamp()
         self.population = []
@@ -40,6 +42,7 @@ class Genetics(ABC):
         self.charset = charset
         self.fitness_goal = fitness_goal
         self.cpu_cores = 0
+        self.charsets = charsets
 
         self.options = {} if options is None else options
         os.makedirs('./storage/temp/optimize', exist_ok=True)
@@ -90,7 +93,12 @@ class Genetics(ABC):
 
                     try:
                         for _ in range(self.cpu_cores):
-                            dna = ''.join(choices(self.charset, k=self.solution_len))
+                            if self.charsets is not None:
+                                dna = ''
+                                for _index in range(self.solution_len):
+                                    dna += choice(self.charsets[_index])
+                            else:
+                                dna = ''.join(choices(self.charset, k=self.solution_len))
                             w = Process(target=get_fitness, args=(dna, dna_bucket))
                             w.start()
                             workers.append(w)
@@ -162,7 +170,10 @@ class Genetics(ABC):
 
     def mutate(self, baby: Dict[str, Union[str, Any]]) -> Dict[str, Union[str, Any]]:
         replace_at = randint(0, self.solution_len - 1)
-        replace_with = choice(self.charset)
+        if self.charsets is not None:
+            replace_with = choice(self.charsets[replace_at])
+        else:
+            replace_with = choice(self.charset)
         dna = f"{baby['dna'][:replace_at]}{replace_with}{baby['dna'][replace_at + 1:]}"
 
         try:

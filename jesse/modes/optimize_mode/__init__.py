@@ -37,7 +37,7 @@ class Optimizer(Genetics):
 
         if solution_len == 0:
             raise exceptions.InvalidStrategy('Targeted strategy does not implement a valid hyperparameters() method.')
-
+        reduced_charsets = jh.reduce_charset(self.strategy_hp)
         super().__init__(
             iterations=2000 * solution_len,
             population_size=solution_len * 100,
@@ -50,7 +50,8 @@ class Optimizer(Genetics):
                 'strategy_hp': self.strategy_hp,
                 'start_date': start_date,
                 'finish_date': finish_date,
-            }
+            },
+            charsets=reduced_charsets
         )
 
         if cpu_cores > cpu_count():

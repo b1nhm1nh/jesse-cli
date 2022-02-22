@@ -140,6 +140,31 @@ def dna_to_hp(strategy_hp, dna: str):
         hp[h['name']] = decoded_gene
     return hp
 
+def reduce_charset(strategy_hp, 
+        charset : str = r'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvw'
+    ) -> str:
+    dna = ''
+    # make a DNA
+    for i in range(len(strategy_hp)):
+        dna += charset[0]
+    charsets = []
+    print(f"dna = [{dna}]")
+    # Test all charset values
+    for index in range(len(dna)):
+        last_value = None
+        new_charset = ''
+        for i in range(0, len(charset)):
+            char = charset[i]
+            dna = dna[:index] + char + dna[index + 1:]
+            hps = hyperparameters()
+            hp = jh.dna_to_hp(hps, dna)
+            khp = list(hp)
+            hp_value = hp[khp[index]]
+            if last_value != hp_value:
+                last_value = hp_value
+                new_charset += char
+        charsets.append(new_charset)
+    return charsets
 
 def dump_exception() -> None:
     """

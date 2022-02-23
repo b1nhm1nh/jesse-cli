@@ -169,31 +169,39 @@ class Genetics(ABC):
         self.population = list(sorted(self.population, key=lambda x: x['fitness'], reverse=True))
 
     def mutate(self, baby: Dict[str, Union[str, Any]]) -> Dict[str, Union[str, Any]]:
-        replace_at = randint(0, self.solution_len - 1)
-        if self.charsets is not None:
-            replace_with = choice(self.charsets[replace_at])
+        # Try to mutate the baby 5 times before giving up
+        for r in range(5):
+            result = None
+            print(f"Mutate {r}")
+            replace_at = randint(0, self.solution_len - 1)
+            if self.charsets is not None:
+                replace_with = choice(self.charsets[replace_at])
+            else:
+                replace_with = choice(self.charset)
+            dna = f"{baby['dna'][:replace_at]}{replace_with}{baby['dna'][replace_at + 1:]}"
+
+            try:
+                # check if already exists and then return it
+                result = next(item for item in self.population if item["dna"] == dna)
+                continue
+            except StopIteration:
+                # not found - so run the backtest
+                fitness_score, fitness_log_training, fitness_log_testing = self.fitness(dna)
+                break
+        if result is None:
+            return {
+                'dna': dna,
+                'fitness': fitness_score,
+                'training_log': fitness_log_training,
+                'testing_log': fitness_log_testing
+            }
         else:
-            replace_with = choice(self.charset)
-        dna = f"{baby['dna'][:replace_at]}{replace_with}{baby['dna'][replace_at + 1:]}"
-
-        try:
-            # check if already exists and then return it
-            return next(item for item in self.population if item["dna"] == dna)
-        except StopIteration:
-            # not found - so run the backtest
-            fitness_score, fitness_log_training, fitness_log_testing = self.fitness(dna)
-
-        return {
-            'dna': dna,
-            'fitness': fitness_score,
-            'training_log': fitness_log_training,
-            'testing_log': fitness_log_testing
-        }
+            return result
 
     def make_love(self) -> Dict[str, Union[str, Any]]:
         mommy = self.select_person()
         daddy = self.select_person()
-
+        print("Make love...")
         dna = ''.join(
             daddy['dna'][i] if i % 2 == 0 else mommy['dna'][i]
             for i in range(self.solution_len)

@@ -202,7 +202,7 @@ class Genetics(ABC):
     def make_love(self) -> Dict[str, Union[str, Any]]:
         mommy = self.select_person()
         daddy = self.select_person()
-        print("Make love...")
+        # print("Make love...")
         dna = ''.join(
             daddy['dna'][i] if i % 2 == 0 else mommy['dna'][i]
             for i in range(self.solution_len)

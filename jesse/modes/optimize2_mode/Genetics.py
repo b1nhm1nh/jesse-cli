@@ -170,9 +170,9 @@ class Genetics(ABC):
 
     def mutate(self, baby: Dict[str, Union[str, Any]]) -> Dict[str, Union[str, Any]]:
         # Try to mutate the baby 5 times before giving up
+        result = None
         for r in range(5):
             result = None
-            print(f"Mutate {r}")
             replace_at = randint(0, self.solution_len - 1)
             if self.charsets is not None:
                 replace_with = choice(self.charsets[replace_at])
@@ -183,6 +183,7 @@ class Genetics(ABC):
             try:
                 # check if already exists and then return it
                 result = next(item for item in self.population if item["dna"] == dna)
+                print(f"re-try mutate {r}")
                 continue
             except StopIteration:
                 # not found - so run the backtest

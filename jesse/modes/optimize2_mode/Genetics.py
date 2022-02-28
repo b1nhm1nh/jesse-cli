@@ -172,7 +172,7 @@ class Genetics(ABC):
         # Try to mutate the baby 5 times before giving up
         result = None
         _baby_dna = baby['dna'] 
-        for r in range(5):
+        for r in range(10):
             result = None
             replace_at = randint(0, self.solution_len - 1)
             baby['dna'] = _baby_dna
@@ -186,13 +186,13 @@ class Genetics(ABC):
             try:
                 # check if already exists and then return it
                 result = next(item for item in self.population if item["dna"] == dna)
-                print(f"re-try mutate {r}")
                 continue
             except StopIteration:
                 # not found - so run the backtest
                 fitness_score, fitness_log_training, fitness_log_testing = self.fitness(dna)
                 break
         if result is None:
+            print(f"re-mutate failed at #{r+1}")
             return {
                 'dna': dna,
                 'fitness': fitness_score,
@@ -200,6 +200,8 @@ class Genetics(ABC):
                 'testing_log': fitness_log_testing
             }
         else:
+            if r > 0:
+                print(f"re-mutate successful at #{r+1}")
             return result
 
     def make_love(self) -> Dict[str, Union[str, Any]]:

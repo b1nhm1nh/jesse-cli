@@ -192,7 +192,7 @@ class Genetics(ABC):
                 fitness_score, fitness_log_training, fitness_log_testing = self.fitness(dna)
                 break
         if result is None:
-            print(f"re-mutate failed at #{r+1}")
+            print(f"re-mutate successful at #{r+1}")
             return {
                 'dna': dna,
                 'fitness': fitness_score,
@@ -201,7 +201,7 @@ class Genetics(ABC):
             }
         else:
             if r > 0:
-                print(f"re-mutate successful at #{r+1}")
+                print(f"re-mutate failed at #{r+1}")
             return result
 
     def make_love(self) -> Dict[str, Union[str, Any]]:

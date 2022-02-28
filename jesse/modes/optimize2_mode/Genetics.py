@@ -171,13 +171,16 @@ class Genetics(ABC):
     def mutate(self, baby: Dict[str, Union[str, Any]]) -> Dict[str, Union[str, Any]]:
         # Try to mutate the baby 5 times before giving up
         result = None
+        _baby_dna = baby['dna'] 
         for r in range(5):
             result = None
             replace_at = randint(0, self.solution_len - 1)
+            baby['dna'] = _baby_dna
             if self.charsets is not None:
                 replace_with = choice(self.charsets[replace_at])
             else:
-                replace_with = choice(self.charset)
+                # make sure the new char is not the same as the old one
+                replace_with = choice(self.charset - baby['dna'][replace_at])
             dna = f"{baby['dna'][:replace_at]}{replace_with}{baby['dna'][replace_at + 1:]}"
 
             try:

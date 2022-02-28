@@ -177,7 +177,7 @@ class Genetics(ABC):
             replace_at = randint(0, self.solution_len - 1)
             baby['dna'] = _baby_dna
             if self.charsets is not None:
-                replace_with = choice(self.charsets[replace_at])
+                replace_with = choice(self.charsets[replace_at] - baby['dna'][replace_at])
             else:
                 # make sure the new char is not the same as the old one
                 replace_with = choice(self.charset - baby['dna'][replace_at])

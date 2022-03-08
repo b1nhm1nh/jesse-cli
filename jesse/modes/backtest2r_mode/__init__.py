@@ -8,7 +8,7 @@ import pandas as pd
 
 import jesse.helpers as jh
 import jesse.services.metrics as stats
-import jesse.services.required_candles as required_candles
+import jesse.services.required_candles_r as required_candles
 import jesse.services.selectors as selectors
 import jesse.services.table as table
 from jesse import exceptions
@@ -46,7 +46,7 @@ def redis_save(key, value):
 
 def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[str, np.ndarray]]] = None,
         chart: bool = False, tradingview: bool = False, full_reports: bool = False,
-        csv: bool = False, json: bool = False) -> None:
+        csv: bool = False, json: bool = False, hyperparameters: dict = None) -> None:
     # clear the screen
     if not jh.should_execute_silently():
         click.clear()
@@ -79,7 +79,7 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
             print('     Symbol  |     timestamp    | open | close | high | low | volume')
 
     # run backtest simulation
-    simulator(candles)
+    simulator(candles, hyperparameters)
 
     if not jh.should_execute_silently():
         # print trades metrics
@@ -109,11 +109,31 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
                 change.append(((last.close - first.close) / first.close) * 100.0)
 
             data = report.portfolio_metrics()
+            # print(data[len(data) -1])
+            metrics = data[len(data) -1][1]
+            data.remove(data[len(data) -1])
+
             data.append(['Market Change', f'{round(np.average(change), 2)}%'])
             print('\n')
             table.key_value(data, 'Metrics', alignments=('left', 'right'))
-            print('\n')
+            # print('\n')
 
+            import base64
+            import json as json_module
+ 
+            # convert numpy type to python
+            for index in metrics:
+                item_type = type(metrics[index])
+                if item_type == np.int64:
+                    metrics[index] = int(metrics[index])
+                if item_type == np.float64:
+                    metrics[index] = float(metrics[index])
+
+                # if type(metrics[i][1]) == INT64:
+            
+            # print(json_module.dumps(metrics))
+            print(f"JSON Metrics: {base64.b64encode(str.encode(json_module.dumps(metrics)))}")
+            # print(f" JSON Metrics: {json_data}")
             routes_count = len(router.routes)
             more = f"-and-{routes_count - 1}-more" if routes_count > 1 else ""
             study_name = f"{router.routes[0].strategy_name}-{router.routes[0].exchange}-{router.routes[0].symbol}-{router.routes[0].timeframe}{more}-{start_date}-{finish_date}"
@@ -233,6 +253,7 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
     store.app.time = first_candles_set[0][0]
 
     # initiate strategies
+    print(hyperparameters)
 
     for r in router.routes:
         StrategyClass = jh.get_strategy_class(r.strategy_name)

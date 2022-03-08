@@ -14,6 +14,8 @@ from jesse.services import selectors
 from jesse.services.candle import is_bullish
 from jesse.store import store
 
+import json
+
 warnings.filterwarnings("ignore")
 
 
@@ -227,10 +229,12 @@ def portfolio_metrics() -> List[
 
     if jh.get_config('env.metrics.sharpe_ratio', True):
         metrics.append(['Sharpe Ratio', round(data['sharpe_ratio'], 2)])
+    metrics.append(['Smart Sharpe', round(data['smart_sharpe'], 2)])
     if jh.get_config('env.metrics.calmar_ratio', False):
         metrics.append(['Calmar Ratio', round(data['calmar_ratio'], 2)])
     if jh.get_config('env.metrics.sortino_ratio', False):
         metrics.append(['Sortino Ratio', round(data['sortino_ratio'], 2)])
+    metrics.append(['Smart Sortino', round(data['smart_sortino'], 2)])
     if jh.get_config('env.metrics.omega_ratio', False):
         metrics.append(['Omega Ratio', round(data['omega_ratio'], 2)])
     if jh.get_config('env.metrics.winning_streak', False):
@@ -246,6 +250,9 @@ def portfolio_metrics() -> List[
     if jh.get_config('env.metrics.total_losing_trades', False):
         metrics.append(['Total Losing Trades', data['total_losing_trades']])
 
+    # print(data)
+    metrics.append(['Json', data])
+    # json.dumps(data, indent = 4)])
     return metrics
 
 

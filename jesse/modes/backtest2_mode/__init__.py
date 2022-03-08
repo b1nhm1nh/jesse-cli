@@ -94,11 +94,30 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
                 change.append(((last.close - first.close) / first.close) * 100.0)
 
             data = report.portfolio_metrics()
+            # print(data[len(data) -1])
+            metrics = data[len(data) -1][1]
+            data.remove(data[len(data) -1])
             data.append(['Market Change', f'{round(np.average(change), 2)}%'])
             print('\n')
             table.key_value(data, 'Metrics', alignments=('left', 'right'))
             print('\n')
 
+            import base64
+            import json as json_module
+ 
+            # convert numpy type to python
+            for index in metrics:
+                item_type = type(metrics[index])
+                if item_type == np.int64:
+                    metrics[index] = int(metrics[index])
+                if item_type == np.float64:
+                    metrics[index] = float(metrics[index])
+
+                # if type(metrics[i][1]) == INT64:
+            
+            # print(json_module.dumps(metrics))
+            print(f"JSON Metrics: {base64.b64encode(str.encode(json_module.dumps(metrics)))}")
+            # print(f" JSON Metrics: {json_data}")
             routes_count = len(router.routes)
             more = f"-and-{routes_count - 1}-more" if routes_count > 1 else ""
             study_name = f"{router.routes[0].strategy_name}-{router.routes[0].exchange}-{router.routes[0].symbol}-{router.routes[0].timeframe}{more}-{start_date}-{finish_date}"

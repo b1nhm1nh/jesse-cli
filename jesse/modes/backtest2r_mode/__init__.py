@@ -132,7 +132,8 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
                 # if type(metrics[i][1]) == INT64:
             
             # print(json_module.dumps(metrics))
-            print(f"JSON Metrics: {base64.b64encode(str.encode(json_module.dumps(metrics)))}")
+            # print(f"JSON Metrics: {base64.b64encode(str.encode(json_module.dumps(metrics)))}")
+            print(f" JSON Metrics|{json_module.dumps(metrics)}")
             # print(f" JSON Metrics: {json_data}")
             routes_count = len(router.routes)
             more = f"-and-{routes_count - 1}-more" if routes_count > 1 else ""

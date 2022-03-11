@@ -9,7 +9,7 @@ from jesse.config import config
 from jesse.store import store
 
 
-def quantstats_tearsheet(buy_and_hold_returns: pd.Series, study_name: str) -> None:
+def quantstats_tearsheet(buy_and_hold_returns: pd.Series, study_name: str, hyperparameters: dict = None, prefix: str = '') -> None:
     daily_returns = pd.Series(store.app.daily_balance).pct_change(1).values
 
     start_date = datetime.fromtimestamp(store.app.starting_time / 1000)
@@ -27,7 +27,15 @@ def quantstats_tearsheet(buy_and_hold_returns: pd.Series, study_name: str) -> No
 
     os.makedirs('./storage/full-reports', exist_ok=True)
 
-    file_path = f'storage/full-reports/{modes[mode][0]}-{str(arrow.utcnow())[0:19]}-{study_name}.html'.replace(":", "-")
+    file_path = f'storage/full-reports/{prefix}{modes[mode][0]}-{str(arrow.utcnow())[0:19]}-{study_name}.html'.replace(":", "-")
+    print(f"Exporting json {hyperparameters}")
+    if hyperparameters is not None:
+        
+        import json
+        json_data = json.dumps(hyperparameters)
+        hpfilename = file_path.replace(".html","")
+        with open(f"{hpfilename}_hp.json", 'w') as f:
+            f.write(json_data)
 
     title = f"{modes[mode][1]} → {arrow.utcnow().strftime('%d %b, %Y %H:%M:%S')} → {study_name}"
 

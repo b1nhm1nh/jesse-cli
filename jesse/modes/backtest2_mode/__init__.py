@@ -31,7 +31,7 @@ from jesse.ctf import on_generate_candles_for_bigger_timeframe_with_skip
 
 def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[str, np.ndarray]]] = None,
         chart: bool = False, tradingview: bool = False, full_reports: bool = False,
-        csv: bool = False, json: bool = False) -> None:
+        csv: bool = False, json: bool = False, hyperparameters: dict = None, prefix : str = '') -> None:
     # clear the screen
     if not jh.should_execute_silently():
         click.clear()
@@ -64,7 +64,7 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
             print('     Symbol  |     timestamp    | open | close | high | low | volume')
 
     # run backtest simulation
-    simulator(candles)
+    simulator(candles, hyperparameters)
 
     if not jh.should_execute_silently():
         # print trades metrics
@@ -114,7 +114,9 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
                     metrics[index] = float(metrics[index])
 
                 # if type(metrics[i][1]) == INT64:
-            
+            # add prefix in file
+
+            print(f" Report Prefix |{prefix}")
             # print(json_module.dumps(metrics))
             # print(f"JSON Metrics: {base64.b64encode(str.encode(json_module.dumps(metrics)))}")
             print(f" JSON Metrics|{json_module.dumps(metrics)}")
@@ -154,7 +156,9 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
                     'D').mean()
                 price_pct_change = price_df.pct_change(1).fillna(0)
                 bh_daily_returns_all_routes = price_pct_change.mean(1)
-                quantstats.quantstats_tearsheet(bh_daily_returns_all_routes, study_name)
+                if len(prefix) > 0:
+                    prefix = f"{prefix}_"
+                quantstats.quantstats_tearsheet(bh_daily_returns_all_routes, study_name, hyperparameters, prefix)
         else:
             print(jh.color('No trades were made.', 'yellow'))
 
@@ -235,6 +239,7 @@ def simulator(candles: Dict[str, Dict[str, Union[str, np.ndarray]]], hyperparame
     store.app.time = first_candles_set[0][0]
 
     # initiate strategies
+    # print(hyperparameters)
 
     for r in router.routes:
         StrategyClass = jh.get_strategy_class(r.strategy_name)
@@ -431,8 +436,6 @@ def _get_fixed_jumped_candle(previous_candle: np.ndarray, candle: np.ndarray) ->
     """
     if candle[1] != previous_candle[2]:
         candle[1] = previous_candle[2]
-        # print(f"Fixed jump in price! Previous candle close: {previous_candle[2]} - Current candle open: {candle[1]}")
-        # alsdjaslkdjaskld
         candle[4] = min(previous_candle[2], candle[4])
         candle[3] = max(previous_candle[2], candle[3])
 

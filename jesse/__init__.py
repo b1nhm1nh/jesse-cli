@@ -74,10 +74,10 @@ if is_jesse_project:
     inject_local_config()
     inject_local_routes()
 
-broker_url = f"redis://{jh.get_config('env.cluster.host')}:{jh.get_config('env.cluster.port')}/{jh.get_config('env.cluster.broker_db')}"
-backend_url = f"redis://{jh.get_config('env.cluster.host')}:{jh.get_config('env.cluster.port')}/{jh.get_config('env.cluster.backend_db')}"
-print(f"{broker_url} {backend_url}")
-app = Celery('jesse',  broker=broker_url, backend=backend_url, worker_prefetch_multiplier=1)
+# celery # broker_url = f"redis://{jh.get_config('env.cluster.host')}:{jh.get_config('env.cluster.port')}/{jh.get_config('env.cluster.broker_db')}"
+# celery # backend_url = f"redis://{jh.get_config('env.cluster.host')}:{jh.get_config('env.cluster.port')}/{jh.get_config('env.cluster.backend_db')}"
+# celery # print(f"{broker_url} {backend_url}")
+# celery # app = Celery('jesse',  broker=broker_url, backend=backend_url, worker_prefetch_multiplier=1)
 
 
 def register_custom_exception_handler() -> None:
@@ -529,7 +529,7 @@ def walkforward(start_date: str, finish_date: str, optimal_total: int, cpu: int,
 
     optimizewf_mode(start_date, finish_date, optimal_total, cpu, csv, json, train_month, test_month, inc_month)
 
-@app.task
+# celery #@app.task
 def init_worker(start_date: str, finish_date: str, optimal_total: int) -> None:
     """
     init worker
@@ -557,7 +557,7 @@ def init_worker(start_date: str, finish_date: str, optimal_total: int) -> None:
     #, 1, csv, json)
     return "Inited"
 
-@app.task
+# celery #@app.task
 def run_worker(dna:str) -> None:
     """
     run worker

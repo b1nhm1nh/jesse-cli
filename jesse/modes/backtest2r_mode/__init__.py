@@ -46,7 +46,7 @@ def redis_save(key, value):
 
 def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[str, np.ndarray]]] = None,
         chart: bool = False, tradingview: bool = False, full_reports: bool = False,
-        csv: bool = False, json: bool = False, hyperparameters: dict = None, prefix : str = '') -> None:
+        csv: bool = False, json: bool = False, hyperparameters: dict = None, prefix : str = '', dry_run: bool = False) -> None:
     # clear the screen
     if not jh.should_execute_silently():
         click.clear()
@@ -63,7 +63,9 @@ def run(start_date: str, finish_date: str, candles: Dict[str, Dict[str, Union[st
         print('loading candles...')
         candles = load_candles(start_date, finish_date)
         click.clear()
-
+    if dry_run:
+        print("Load cached candle only!!!!")
+        return
     if not jh.should_execute_silently():
         # print candles table
         key = f"{config['app']['considering_candles'][0][0]}-{config['app']['considering_candles'][0][1]}"
